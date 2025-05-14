@@ -7,57 +7,82 @@
 
 import Foundation
 
-struct SolarInfo {
+import Foundation
+
+struct SolarInfo: Equatable {
     var city: String
     var latitude: Double?
     var longitude: Double?
-    var currentDate: Date // Represents the date for which the solar data (sunrise/sunset) is valid
+    var currentDate: Date
     var sunrise: Date
     var sunset: Date
     var solarNoon: Date
-    
-    var currentAltitude: Double // Placeholder
-    var currentAzimuth: Double  // Placeholder
+    var timezoneIdentifier: String?
+
+    var currentAltitude: Double // Placeholder, consider fetching this if API supports
+    var currentAzimuth: Double  // Placeholder, consider fetching this if API supports
     var uvIndex: Int
     var uvIndexCategory: String
+
+    // For future weather integration for more accurate sky gradient
+    var weatherCode: Int? // WMO Weather interpretation codes
+    var cloudCover: Int?  // Percentage
     
+    static func == (lhs: SolarInfo, rhs: SolarInfo) -> Bool {
+        return lhs.city == rhs.city &&
+        lhs.latitude == rhs.latitude &&
+        lhs.longitude == rhs.longitude &&
+        lhs.currentDate == rhs.currentDate &&
+        lhs.sunrise == rhs.sunrise &&
+        lhs.sunset == rhs.sunset &&
+        lhs.solarNoon == rhs.solarNoon &&
+        lhs.timezoneIdentifier == rhs.timezoneIdentifier
+    }
+
     var daylightDuration: String {
+        guard sunrise < sunset else { return "N/A" } // Ensure sunrise is before sunset
         let components = Calendar.current.dateComponents([.hour, .minute], from: sunrise, to: sunset)
         return "\(components.hour ?? 0)h \(components.minute ?? 0)m"
     }
-    
+
     var timeToSolarNoon: String {
         let now = Date()
-        if now > solarNoon { return "Past Solar Noon" }
+        guard now < solarNoon, sunrise < solarNoon else { return "Past Solar Noon" }
         let components = Calendar.current.dateComponents([.hour, .minute], from: now, to: solarNoon)
+        if (components.hour ?? 0) < 0 || (components.minute ?? 0) < 0 { return "Past Solar Noon" }
         return "\(components.hour ?? 0)h \(components.minute ?? 0)m remaining"
     }
 
     var sunProgress: Double {
         let now = Date()
+        // Ensure dates are for the same day for accurate progress
+        guard Calendar.current.isDate(now, inSameDayAs: sunrise) else {
+            if now < sunrise { return 0.0 } // Before sunrise on the current day
+            if now > sunset { return 1.0 } // After sunset on the current day
+            return 0.0 // Default if dates are mismatched significantly
+        }
+
         let totalDaylightSeconds = sunset.timeIntervalSince(sunrise)
+        if totalDaylightSeconds <= 0 { return now > sunset ? 1.0 : 0.0 } // Handles edge cases or invalid data
+        
         let secondsSinceSunrise = now.timeIntervalSince(sunrise)
-        if totalDaylightSeconds <= 0 { return 0.0 }
         let progress = secondsSinceSunrise / totalDaylightSeconds
         return max(0.0, min(1.0, progress))
     }
 
-    // Default placeholder initializer
-    static func placeholder(city: String = "Philadelphia", lat: Double? = 39.9526, lon: Double? = -75.1652) -> SolarInfo {
+    static func placeholder(city: String = "Loading...", lat: Double? = nil, lon: Double? = nil) -> SolarInfo {
         let calendar = Calendar.current
         var components = DateComponents()
-        components.year = 2025; components.month = 5; components.day = 13 // Fixed date for placeholder
+        components.year = Calendar.current.component(.year, from: Date())
+        components.month = Calendar.current.component(.month, from: Date())
+        components.day = Calendar.current.component(.day, from: Date())
         
-        let placeholderDate = calendar.date(from: components)!
+        let placeholderDate = calendar.date(from: components) ?? Date()
         
-        components.hour = 5; components.minute = 45
-        let sunriseDate = calendar.date(from: components)!
-        
-        components.hour = 20; components.minute = 05
-        let sunsetDate = calendar.date(from: components)!
-        
-        components.hour = 12; components.minute = 55
-        let solarNoonDate = calendar.date(from: components)!
+        // Create somewhat realistic placeholders based on current time if possible
+        let sunriseDate = calendar.date(bySettingHour: 6, minute: 0, second: 0, of: placeholderDate) ?? Date()
+        let sunsetDate = calendar.date(bySettingHour: 18, minute: 0, second: 0, of: placeholderDate) ?? Date()
+        let solarNoonDate = calendar.date(bySettingHour: 12, minute: 0, second: 0, of: placeholderDate) ?? Date()
 
         return SolarInfo(
             city: city,
@@ -67,10 +92,12 @@ struct SolarInfo {
             sunrise: sunriseDate,
             sunset: sunsetDate,
             solarNoon: solarNoonDate,
-            currentAltitude: 45.0, // Placeholder
-            currentAzimuth: 120.0, // Placeholder
-            uvIndex: 4,
-            uvIndexCategory: "Moderate"
+            currentAltitude: 0.0,
+            currentAzimuth: 0.0,
+            uvIndex: 0,
+            uvIndexCategory: "Low",
+            weatherCode: nil,
+            cloudCover: nil
         )
     }
 }

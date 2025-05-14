@@ -5,113 +5,160 @@
 //  Created by Tyler Reckart on 5/13/25.
 //
 
-import SwiftUI
-import CoreData
+import Foundation
 import CoreLocation
-import Combine
 
-
+// Updated OpenMeteoResponse to capture the timezone identifier
 struct OpenMeteoResponse: Codable {
     let latitude: Double
     let longitude: Double
+    let utc_offset_seconds: Int // Timezone offset from GMT time in seconds
+    let timezone: String // Timezone name like Europe/Berlin
+    let timezone_abbreviation: String // Abbreviation like CET
     let daily: DailyData
-    let daily_units: DailyUnits // Corrected from dailyUnits
+    let daily_units: DailyUnits
+    let hourly: HourlyData?
 }
 
 struct DailyData: Codable {
-    let time: [String] // Dates
-    let sunrise: [String] // ISO8601 datetime strings
-    let sunset: [String]  // ISO8601 datetime strings
-    let uv_index_max: [Double?] // Max UV index for the day, can be null
+    let time: [String]
+    let sunrise: [String]
+    let sunset: [String]
+    let uv_index_max: [Double?]
 }
 
-struct DailyUnits: Codable { // To match JSON structure
+struct DailyUnits: Codable {
     let time: String
     let sunrise: String
     let sunset: String
     let uv_index_max: String
+    let weathercode: String?
+    let cloudcover: String?
 }
+
+struct HourlyData: Codable {
+    let time: [String]
+    let weathercode: [Int]?
+    let cloudcover: [Int]?
+}
+
 
 class SolarAPIService {
     private let baseURL = "https://api.open-meteo.com/v1/forecast"
-    private let isoDateFormatter = ISO8601DateFormatter() // For parsing sunrise/sunset strings
+    
+    // Formatter for "YYYY-MM-DD"
+    private let dateOnlyFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        formatter.locale = Locale(identifier: "en_US_POSIX") // Crucial for fixed formats
+        formatter.timeZone = TimeZone(secondsFromGMT: 0) // Interpret date string as UTC date part
+        return formatter
+    }()
 
-    init() {
-        // ISO8601DateFormatter by default handles dates like "2023-11-21T07:00"
-        // If your API returns only date "2023-11-21", you might need a DateFormatter with "yyyy-MM-dd"
-    }
+    // Formatter for "YYYY-MM-DD'T'HH:mm" (local wall time from API)
+    private let localTimeFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd'T'HH:mm"
+        formatter.locale = Locale(identifier: "en_US_POSIX") // Crucial for fixed formats
+        // Timezone will be set dynamically before parsing based on API response
+        return formatter
+    }()
+
 
     func fetchSolarData(latitude: Double, longitude: Double) async throws -> OpenMeteoResponse {
-        // Construct the URL
         var components = URLComponents(string: baseURL)!
         components.queryItems = [
             URLQueryItem(name: "latitude", value: "\(latitude)"),
             URLQueryItem(name: "longitude", value: "\(longitude)"),
             URLQueryItem(name: "daily", value: "sunrise,sunset,uv_index_max"),
-            URLQueryItem(name: "timezone", value: "auto"), // Automatically determine timezone
-            URLQueryItem(name: "forecast_days", value: "1") // Data for today
+            URLQueryItem(name: "hourly", value: "weathercode,cloudcover"),
+            URLQueryItem(name: "timezone", value: "auto"), // API will return timezone info
+            URLQueryItem(name: "forecast_days", value: "1")
         ]
 
         guard let url = components.url else {
-            throw URLError(.badURL)
+            print("❌ SolarAPIService: Bad URL constructed: \(components.string ?? "N/A")")
+            throw APIError.badURL
         }
         
-        print("Fetching solar data from URL: \(url)")
+        print("☀️ SolarAPIService: Fetching solar data from URL: \(url)")
 
-        // Perform the request
         let (data, response) = try await URLSession.shared.data(from: url)
 
-        guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
-            print("HTTP Error: \((response as? HTTPURLResponse)?.statusCode ?? -1)")
-            if let dataString = String(data: data, encoding: .utf8) {
-                print("Error response body: \(dataString)")
-            }
-            throw URLError(.badServerResponse)
+        guard let httpResponse = response as? HTTPURLResponse else {
+            print("❌ SolarAPIService: Not an HTTP response.")
+            throw APIError.networkError(description: "Invalid server response.")
         }
         
-        // Decode the JSON
+        guard httpResponse.statusCode == 200 else {
+            let responseBody = String(data: data, encoding: .utf8) ?? "No response body"
+            print("❌ SolarAPIService: HTTP Error: \(httpResponse.statusCode). Body: \(responseBody)")
+            throw APIError.badServerResponse(statusCode: httpResponse.statusCode, responseBody: responseBody)
+        }
+        
         do {
             let decoder = JSONDecoder()
-            // It's good practice to set a date decoding strategy if dates are not standard ISO8601 or require custom handling.
-            // For "YYYY-MM-DDTHH:mm" strings, default ISO8601 should work.
-            // For "YYYY-MM-DD" strings (like `daily.time`), a custom formatter might be needed if not just used as strings.
             let decodedResponse = try decoder.decode(OpenMeteoResponse.self, from: data)
-            print("Successfully decoded solar data.")
+            print("✅ SolarAPIService: Successfully decoded solar data for timezone: \(decodedResponse.timezone)")
             return decodedResponse
         } catch {
-            print("JSON Decoding Error: \(error)")
-            if let dataString = String(data: data, encoding: .utf8) {
-                print("Problematic JSON string: \(dataString)")
-            }
-            throw error // Re-throw the decoding error
+            let responseBody = String(data: data, encoding: .utf8) ?? "No response body"
+            print("❌ SolarAPIService: JSON Decoding Error: \(error.localizedDescription).")
+            print("Problematic JSON string: \(responseBody)")
+            throw APIError.decodingError(description: error.localizedDescription, data: data)
         }
     }
 
-    // Helper to parse ISO8601 date strings from API into Date objects
-    func parseISOString(_ dateString: String) -> Date? {
-        // Try with common ISO8601 formats
-        let formatters: [DateFormatter] = [
-            {
-                let formatter = DateFormatter()
-                formatter.dateFormat = "yyyy-MM-dd'T'HH:mm"
-                formatter.locale = Locale(identifier: "en_US_POSIX") // Essential for fixed-format dates
-                // The timezone should ideally be the one the date string is in.
-                // If OpenMeteo provides "2024-05-13T05:32" and the timezone for that data is America/New_York,
-                // then this formatter should use that timezone.
-                // However, ISO8601DateFormatter is generally better at handling these.
-                // Setting to TimeZone.current assumes the string represents a time in the user's current system timezone,
-                // which is correct if the API returns times adjusted to the user's local (via `timezone=auto`).
-                formatter.timeZone = TimeZone.current
-                return formatter
-            }()
-        ]
-        
-        for formatter in formatters {
-            if let date = formatter.date(from: dateString) {
+    // Updated to take timezoneIdentifier for correct parsing of local wall times
+    func parseDateTimeString(_ dateString: String, timezoneIdentifier: String) -> Date? {
+        // Set the timezone on the formatter for this specific parsing operation
+        // This tells the formatter: "This dateString represents a wall clock time in this specific timezone"
+        // The resulting `Date` object will be the correct absolute point in time (UTC).
+        if let tz = TimeZone(identifier: timezoneIdentifier) {
+            localTimeFormatter.timeZone = tz
+            if let date = localTimeFormatter.date(from: dateString) {
+                return date
+            }
+        } else {
+            print("⚠️ SolarAPIService: Could not create TimeZone for identifier: \(timezoneIdentifier)")
+            // Fallback: try parsing as if it's in current device timezone, or UTC, though less accurate
+            localTimeFormatter.timeZone = TimeZone.current
+            if let date = localTimeFormatter.date(from: dateString) {
+                 print("⚠️ SolarAPIService: Parsed \(dateString) using current device timezone as fallback.")
                 return date
             }
         }
-        print("Could not parse date string: \(dateString)")
+        print("⚠️ SolarAPIService: Could not parse date-time string: \(dateString) with timezone \(timezoneIdentifier)")
         return nil
+    }
+    
+    func parseDateOnlyString(_ dateString: String) -> Date? {
+        // dateOnlyFormatter is already set to interpret the date string as UTC for the date part
+        if let date = dateOnlyFormatter.date(from: dateString) {
+            return date
+        }
+        print("⚠️ SolarAPIService: Could not parse date-only string: \(dateString)")
+        return nil
+    }
+}
+
+// APIError enum remains the same
+enum APIError: Error, LocalizedError {
+    case badURL
+    case networkError(description: String)
+    case badServerResponse(statusCode: Int, responseBody: String?)
+    case decodingError(description: String, data: Data?)
+
+    var errorDescription: String? {
+        switch self {
+        case .badURL:
+            return "The URL for the request was invalid."
+        case .networkError(let description):
+            return "Network error: \(description)"
+        case .badServerResponse(let statusCode, _):
+            return "Server returned an error: \(statusCode)."
+        case .decodingError(let description, _):
+            return "Failed to decode the response: \(description)."
+        }
     }
 }
