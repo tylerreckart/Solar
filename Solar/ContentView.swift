@@ -20,7 +20,7 @@ struct ContentView: View {
     var body: some View {
         NavigationView {
             ZStack {
-                Color(.systemBackground).edgesIgnoringSafeArea(.all)
+                Color(self.barColor).edgesIgnoringSafeArea(.all)
 
                 VStack(spacing: 0) {
                     customTopBar()
@@ -32,7 +32,7 @@ struct ContentView: View {
                         .onChange(of: viewModel.solarInfo) {
                             switch viewModel.currentSkyCondition {
                             case .sunrise:
-                                self.barColor = AppColors.sunriseGradientEnd
+                                self.barColor = AppColors.sunriseGradientStart
                             case .daylight:
                                 self.barColor = AppColors.daylightGradientStart
                             case .sunset:
@@ -45,15 +45,12 @@ struct ContentView: View {
                     ScrollView {
                         VStack(spacing: 25) { // Increased spacing between major elements
                             if !viewModel.dataLoadingState_isLoading() {
-                                SunPathView(
-                                    progress: viewModel.solarInfo.sunProgress,
-                                    skyCondition: viewModel.currentSkyCondition
-                                )
-                                .id(viewModel.solarInfo.city) // Re-render if city changes forcing new animation start
-
+                                SunPathView(progress: viewModel.solarInfo.sunProgress, skyCondition: viewModel.currentSkyCondition)
+                                    .id(viewModel.solarInfo.city)
+                                
                                 SolarDataListView(solarInfo: viewModel.solarInfo, viewModel: viewModel)
                                     .padding(.horizontal)
-                                    .opacity(viewModel.dataLoadingState_isLoading() ? 0.5 : 1.0) // Dim if loading new city data
+                                    .opacity(viewModel.dataLoadingState_isLoading() ? 0.5 : 1.0)
                                     .overlay {
                                         if viewModel.dataLoadingState_isLoading() {
                                             ProgressView()
@@ -61,24 +58,35 @@ struct ContentView: View {
                                                 .progressViewStyle(CircularProgressViewStyle(tint: AppColors.primaryAccent))
                                         }
                                     }
+                                    .zIndex(10)
+                                    .offset(y: -40)
+                                
+                                if !viewModel.solarInfo.hourlyUVData.isEmpty {
+                                    HourlyUVChartView(
+                                        hourlyUVData: viewModel.solarInfo.hourlyUVData,
+                                        timezoneIdentifier: viewModel.solarInfo.timezoneIdentifier
+                                    )
+                                    .padding(.horizontal)
+                                    .offset(y: -40)
+                                }
                             }
                             Spacer()
                         }
                     }
-                    .background(Color(.systemGray6))
+                    .background(.black)
                 }
                 
                 // Error Display Area
-                if case .error(let message) = viewModel.dataLoadingState {
-                    ErrorView(message: message, retryAction: {
-                        // Determine appropriate retry action
-                        if message.lowercased().contains("location") {
-                             viewModel.requestSolarDataForCurrentLocation()
-                        } else {
-                            viewModel.refreshSolarDataForCurrentCity()
-                        }
-                    })
-                }
+//                if case .error(let message) = viewModel.dataLoadingState {
+//                    ErrorView(message: message, retryAction: {
+//                        // Determine appropriate retry action
+//                        if message.lowercased().contains("location") {
+//                             viewModel.requestSolarDataForCurrentLocation()
+//                        } else {
+//                            viewModel.refreshSolarDataForCurrentCity()
+//                        }
+//                    })
+//                }
             }
             .navigationBarHidden(true)
             .sheet(isPresented: $showingCitySearchSheet) {

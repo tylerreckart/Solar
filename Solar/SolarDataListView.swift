@@ -22,7 +22,7 @@ struct SolarDataRow: View {
                 .frame(width: 28, alignment: .center)
             Text(label)
                 .font(.system(size: 15, weight: .regular))
-                .foregroundColor(Color(uiColor: .label))
+                .foregroundColor(.white)
             Spacer()
             Text(value)
                 .font(.system(size: 15, weight: .medium))
@@ -39,35 +39,25 @@ struct SolarDataListView: View {
 
     var body: some View {
         VStack(alignment: .leading) {
-            Group {
-                SolarDataRow(iconName: "sunrise.fill", label: "Sunrise", value: viewModel.formatTime(solarInfo.sunrise))
-                SolarDataRow(iconName: "sunset.fill", label: "Sunset", value: viewModel.formatTime(solarInfo.sunset))
-                SolarDataRow(iconName: "sun.max.fill", label: "Solar Noon", value: viewModel.formatTime(solarInfo.solarNoon))
-                SolarDataRow(iconName: "timer", label: "Time to Noon", value: solarInfo.timeToSolarNoon)
-            }
-            
-            Line()
-                .stroke(style: StrokeStyle(lineWidth: 2, lineCap: .round))
-                .foregroundColor(Color(.systemGray5))
-            
-            Group {
-                SolarDataRow(iconName: "arrow.up.and.down.circle.fill", label: "Altitude", value: String(format: "%.1f°", solarInfo.currentAltitude))
-                SolarDataRow(iconName: "safari.fill", label: "Azimuth", value: String(format: "%.1f°", solarInfo.currentAzimuth))
-                SolarDataRow(iconName: "sun.max.trianglebadge.exclamationmark.fill",
-                             label: "UV Index",
-                             value: "\(solarInfo.uvIndex) (\(solarInfo.uvIndexCategory))",
-                             valueColor: AppColors.uvColor(for: solarInfo.uvIndexCategory))
-            }
-            
-            Line()
-                .stroke(style: StrokeStyle(lineWidth: 2, lineCap: .round))
-                .foregroundColor(Color(.systemGray5))
-            
+            Text("Today's Solar Forecast")
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundColor(.white)
+                .padding(.top, 16)
+            SolarDataRow(iconName: "sunrise.fill", label: "Sunrise", value: viewModel.formatTime(solarInfo.sunrise))
+            SolarDataRow(iconName: "sunset.fill", label: "Sunset", value: viewModel.formatTime(solarInfo.sunset))
+            SolarDataRow(iconName: "sun.max.fill", label: "Solar Noon", value: viewModel.formatTime(solarInfo.solarNoon))
+            SolarDataRow(iconName: "timer", label: "Time to Noon", value: solarInfo.timeToSolarNoon)
+            SolarDataRow(iconName: "arrow.up.and.down.circle.fill", label: "Altitude", value: String(format: "%.1f°", solarInfo.currentAltitude))
+            SolarDataRow(iconName: "safari.fill", label: "Azimuth", value: String(format: "%.1f°", solarInfo.currentAzimuth))
+            SolarDataRow(iconName: "sun.max.trianglebadge.exclamationmark.fill",
+                         label: "Daily UV Index",
+                         value: "\(solarInfo.uvIndex) (\(solarInfo.uvIndexCategory))",
+                         valueColor: AppColors.uvColor(for: solarInfo.uvIndexCategory))
             SolarDataRow(iconName: "hourglass", label: "Daylight Duration", value: solarInfo.daylightDuration)
         }
         .padding(.horizontal)
         .padding(.vertical, 10)
-        .background(Color(.systemBackground))
+        .background(AppColors.ui)
         .cornerRadius(15)
         .shadow(color: Color.black.opacity(0.06), radius: 6, x: 0, y: 3)
     }

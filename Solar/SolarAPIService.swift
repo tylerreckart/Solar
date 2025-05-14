@@ -40,8 +40,8 @@ struct HourlyData: Codable {
     let time: [String]
     let weathercode: [Int]?
     let cloudcover: [Int]?
+    let uv_index: [Double?]?
 }
-
 
 class SolarAPIService {
     private let baseURL = "https://api.open-meteo.com/v1/forecast"
@@ -67,13 +67,26 @@ class SolarAPIService {
 
     func fetchSolarData(latitude: Double, longitude: Double) async throws -> OpenMeteoResponse {
         var components = URLComponents(string: baseURL)!
+    
+        let dailyParams = [
+            "sunrise",
+            "sunset",
+            "uv_index_max"
+        ]
+        
+        let hourlyParams = [
+            "weathercode",
+            "cloudcover",
+            "uv_index"
+        ]
+        
         components.queryItems = [
             URLQueryItem(name: "latitude", value: "\(latitude)"),
             URLQueryItem(name: "longitude", value: "\(longitude)"),
-            URLQueryItem(name: "daily", value: "sunrise,sunset,uv_index_max"),
-            URLQueryItem(name: "hourly", value: "weathercode,cloudcover"),
-            URLQueryItem(name: "timezone", value: "auto"), // API will return timezone info
-            URLQueryItem(name: "forecast_days", value: "1")
+            URLQueryItem(name: "daily", value: dailyParams.joined(separator: ",")),
+            URLQueryItem(name: "hourly", value: hourlyParams.joined(separator: ",")),
+            URLQueryItem(name: "timezone", value: "auto"),
+            URLQueryItem(name: "forecast_days", value: "2")
         ]
 
         guard let url = components.url else {

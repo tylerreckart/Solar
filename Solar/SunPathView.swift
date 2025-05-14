@@ -5,6 +5,32 @@
 //  Created by Tyler Reckart on 5/13/25.
 //
 
+extension Color {
+    init(hex: String) {
+        let hex = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
+        var int: UInt64 = 0
+        Scanner(string: hex).scanHexInt64(&int)
+        let a, r, g, b: UInt64
+        switch hex.count {
+        case 3: // RGB (12-bit)
+            (a, r, g, b) = (255, (int >> 8) * 17, (int >> 4 & 0xF) * 17, (int & 0xF) * 17)
+        case 6: // RGB (24-bit)
+            (a, r, g, b) = (255, int >> 16, int >> 8 & 0xFF, int & 0xFF)
+        case 8: // ARGB (32-bit)
+            (a, r, g, b) = (int >> 24, int >> 16 & 0xFF, int >> 8 & 0xFF, int & 0xFF)
+        default:
+            (a, r, g, b) = (1, 0, 0, 0) // Default to black with alpha 0 if parsing fails
+        }
+        self.init(
+            .sRGB,
+            red: Double(r) / 255,
+            green: Double(g) / 255,
+            blue: Double(b) / 255,
+            opacity: Double(a) / 255
+        )
+    }
+}
+
 import SwiftUI
 
 struct SunPathView: View {
@@ -12,10 +38,15 @@ struct SunPathView: View {
     let solarNoonProgress: Double = 0.5
     let skyCondition: SkyCondition
 
+    private let pathXInsetFactor: CGFloat = 0.1
+    private let pathYBaseFactor: CGFloat = 0.85
+    private let pathPeakHeightFactor: CGFloat = 0.001
+
+
     private var gradientColors: [Color] {
         switch skyCondition {
         case .sunrise:
-            return [AppColors.sunriseGradientEnd, AppColors.sunriseGradientStart]
+            return [AppColors.sunriseGradientStart, AppColors.sunriseGradientEnd]
         case .daylight:
             return [AppColors.daylightGradientStart, AppColors.daylightGradientEnd]
         case .sunset:
@@ -27,7 +58,6 @@ struct SunPathView: View {
 
     var body: some View {
         ZStack {
-            // Background gradient for the sky
             LinearGradient(
                 gradient: Gradient(colors: gradientColors),
                 startPoint: .top,
@@ -35,45 +65,70 @@ struct SunPathView: View {
             )
             .animation(.easeInOut, value: skyCondition)
             
-            SunPathShape(progress: progress, solarNoonProgress: solarNoonProgress)
-                .stroke(style: StrokeStyle(lineWidth: 2, lineCap: .round))
-                .foregroundColor(.white)
+            SunPathShape(
+                xInsetFactor: pathXInsetFactor,
+                yBaseFactor: pathYBaseFactor,
+                peakHeightFactor: pathPeakHeightFactor
+            )
+            .stroke(style: StrokeStyle(lineWidth: 2, lineCap: .round))
+            .foregroundColor(.white.opacity(0.8)) // Make path slightly transparent if desired
             
             GeometryReader { geometry in
                 let pathRect = CGRect(origin: .zero, size: geometry.size)
-                // Use consistent factors for sun position calculation
-                let sunPosition = calculateSunPosition(in: pathRect, progress: progress, pathHeightFactor: 0.85, peakHeightFactor: 0.15)
+                let sunPosition = calculateSunPosition(
+                    in: pathRect,
+                    progress: progress,
+                    // Pass the same geometric factors to ensure consistency
+                    xInsetFactor: pathXInsetFactor,
+                    yBaseFactor: pathYBaseFactor,
+                    peakHeightFactor: pathPeakHeightFactor
+                )
 
-                // Sun circle
                 Circle()
-                    .fill(.yellow)
+                    .fill(RadialGradient(
+                        gradient: Gradient(colors: [
+                            Color(red: 1.0, green: 1.0, blue: 0.8),
+                            Color(hex: "#FFEB3B"), // Bright yellow
+                            Color(hex: "#FFD600") // Slightly deeper yellow edge
+                        ]),
+                        center: .top,
+                        startRadius: 24 * 0.075,
+                        endRadius: 24 / 2
+                    )) // Sun color
                     .frame(width: 24, height: 24)
-                    .shadow(color: .yellow.opacity(0.6), radius: 8, x: 0, y: 0)
+                    .shadow(color: .yellow.opacity(0.5), radius: 12, x: 0, y: 3)
                     .position(sunPosition)
-                    .animation(.spring(), value: progress)
+                    .animation(.spring(), value: progress) // Or .easeInOut for smoother non-bouncy
             }
         }
-        .shadow(color: Color.black.opacity(0.08), radius: 8, x: 0, y: 4)
-        .frame(height: 250) // Keep explicit frame here if needed by parent
+        .frame(height: 250)
     }
 
-    // Calculates the CGPoint for the sun on the quadratic Bezier path
-    private func calculateSunPosition(in rect: CGRect, progress: Double, pathHeightFactor: CGFloat, peakHeightFactor: CGFloat) -> CGPoint {
-        let t = CGFloat(progress)
+    private func calculateSunPosition(
+        in rect: CGRect,
+        progress: Double,
+        xInsetFactor: CGFloat,    // Added parameter
+        yBaseFactor: CGFloat,     // Added parameter
+        peakHeightFactor: CGFloat // Added parameter
+    ) -> CGPoint {
+        let t = CGFloat(progress) // The parameter for the Bezier curve (0.0 to 1.0)
 
-        // Path starts from bottom-left (10% in), peaks (15% from top), ends bottom-right (10% in from right)
-        // pathHeightFactor controls the Y position of sunrise/sunset points
-        // peakHeightFactor controls the Y position of the noon peak (lower value = higher peak)
-        let p0 = CGPoint(x: rect.width * 0.1, y: rect.height * pathHeightFactor)
-        let p1 = CGPoint(x: rect.width / 2, y: rect.height * peakHeightFactor) // Control point (peak)
-        let p2 = CGPoint(x: rect.width * 0.9, y: rect.height * pathHeightFactor)
+        // Define P0, P1, P2 using the passed-in geometric factors
+        // P0: Start point
+        let p0 = CGPoint(x: rect.width * xInsetFactor, y: rect.height * yBaseFactor)
+        // P1: Control point (determines the peak)
+        let p1 = CGPoint(x: rect.width / 2, y: rect.height * peakHeightFactor)
+        // P2: End point
+        let p2 = CGPoint(x: rect.width * (1.0 - xInsetFactor), y: rect.height * yBaseFactor)
 
+        // Quadratic Bezier curve formula: B(t) = (1-t)^2 * P0 + 2 * (1-t) * t * P1 + t^2 * P2
         let x = pow(1-t, 2) * p0.x + 2 * (1-t) * t * p1.x + pow(t, 2) * p2.x
         let y = pow(1-t, 2) * p0.y + 2 * (1-t) * t * p1.y + pow(t, 2) * p2.y
         
         return CGPoint(x: x, y: y)
     }
 }
+
 
 // Simple line shape for horizon if needed, or use Rectangle
 struct Line: Shape {

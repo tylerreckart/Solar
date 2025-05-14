@@ -247,6 +247,7 @@ class SunViewModel: ObservableObject {
             else if uvIndexInt >= 8 { uvCategory = "Very High" }
             else if uvIndexInt >= 6 { uvCategory = "High" }
             else if uvIndexInt >= 3 { uvCategory = "Moderate" }
+            var parsedHourlyUV: [SolarInfo.HourlyUV] = []
 
             let solarNoonDate = Date(timeInterval: (sunsetDate.timeIntervalSince(sunriseDate) / 2), since: sunriseDate)
             
@@ -280,6 +281,34 @@ class SunViewModel: ObservableObject {
                          }
                     }
                 }
+                
+                if let hourlyAPIData = apiResponse.hourly,
+                   let hourlyTimes = hourlyAPIData.time as? [String], // Explicit type
+                   let hourlyUVIndices = hourlyAPIData.uv_index as? [Double?]? { // Explicit type
+
+                    let now = Date()
+                    let calendar = Calendar.current
+                    var localCalendar = Calendar(identifier: .gregorian) // Calendar for location's timezone
+                    if let tz = TimeZone(identifier: locationTimezoneIdentifier) {
+                        localCalendar.timeZone = tz
+                    } else {
+                        localCalendar.timeZone = TimeZone.current // Fallback
+                    }
+
+                    for i in 0..<hourlyTimes.count {
+                        if i < hourlyUVIndices?.count ?? 0,
+                           let uvValueOptional = hourlyUVIndices?[i],
+                           let date = solarAPIService.parseDateTimeString(hourlyTimes[i], timezoneIdentifier: locationTimezoneIdentifier) {
+
+                            if date >= now || calendar.isDate(date,inSameDayAs: now) {
+                                parsedHourlyUV.append(SolarInfo.HourlyUV(time: date, uvIndex: uvValueOptional))
+                            }
+                        }
+                    }
+
+                     parsedHourlyUV = parsedHourlyUV.filter { $0.time >= now && $0.time <= calendar.date(byAdding: .hour, value: 12, to: now)! }
+                                                    .sorted { $0.time < $1.time }
+                }
             }
 
             self.solarInfo = SolarInfo(
@@ -291,6 +320,7 @@ class SunViewModel: ObservableObject {
                 sunset: sunsetDate,
                 solarNoon: solarNoonDate,
                 timezoneIdentifier: locationTimezoneIdentifier, // Store the fetched timezone identifier
+                hourlyUVData: parsedHourlyUV,
                 currentAltitude: calculateSunAltitude(latitude: lat, date: Date(), timezoneIdentifier: locationTimezoneIdentifier),
                 currentAzimuth: calculateSunAzimuth(latitude: lat, date: Date(), timezoneIdentifier: locationTimezoneIdentifier),
                 uvIndex: uvIndexInt,

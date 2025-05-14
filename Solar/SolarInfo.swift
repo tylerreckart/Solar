@@ -18,6 +18,7 @@ struct SolarInfo: Equatable {
     var sunset: Date
     var solarNoon: Date
     var timezoneIdentifier: String?
+    var hourlyUVData: [HourlyUV]
 
     var currentAltitude: Double // Placeholder, consider fetching this if API supports
     var currentAzimuth: Double  // Placeholder, consider fetching this if API supports
@@ -28,6 +29,21 @@ struct SolarInfo: Equatable {
     var weatherCode: Int? // WMO Weather interpretation codes
     var cloudCover: Int?  // Percentage
     
+    struct HourlyUV: Identifiable, Hashable {
+        let id = UUID()
+        let time: Date
+        let uvIndex: Double
+
+        var uvCategory: String {
+            let roundedUV = Int(round(uvIndex))
+            if roundedUV >= 11 { return "Extreme" }
+            else if roundedUV >= 8 { return "Very High" }
+            else if roundedUV >= 6 { return "High" }
+            else if roundedUV >= 3 { return "Moderate" }
+            else { return "Low" }
+        }
+    }
+    
     static func == (lhs: SolarInfo, rhs: SolarInfo) -> Bool {
         return lhs.city == rhs.city &&
         lhs.latitude == rhs.latitude &&
@@ -36,7 +52,8 @@ struct SolarInfo: Equatable {
         lhs.sunrise == rhs.sunrise &&
         lhs.sunset == rhs.sunset &&
         lhs.solarNoon == rhs.solarNoon &&
-        lhs.timezoneIdentifier == rhs.timezoneIdentifier
+        lhs.timezoneIdentifier == rhs.timezoneIdentifier &&
+        lhs.hourlyUVData == rhs.hourlyUVData
     }
 
     var daylightDuration: String {
@@ -92,6 +109,7 @@ struct SolarInfo: Equatable {
             sunrise: sunriseDate,
             sunset: sunsetDate,
             solarNoon: solarNoonDate,
+            hourlyUVData: [],
             currentAltitude: 0.0,
             currentAzimuth: 0.0,
             uvIndex: 0,
