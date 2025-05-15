@@ -48,27 +48,36 @@ struct ContentView: View {
                                 SunPathView(progress: viewModel.solarInfo.sunProgress, skyCondition: viewModel.currentSkyCondition)
                                     .id(viewModel.solarInfo.city)
                                 
-                                SolarDataListView(solarInfo: viewModel.solarInfo, viewModel: viewModel)
-                                    .padding(.horizontal)
-                                    .opacity(viewModel.dataLoadingState_isLoading() ? 0.5 : 1.0)
-                                    .overlay {
-                                        if viewModel.dataLoadingState_isLoading() {
-                                            ProgressView()
-                                                .scaleEffect(1.5)
-                                                .progressViewStyle(CircularProgressViewStyle(tint: AppColors.primaryAccent))
+                                VStack(spacing: 25) {
+                                    SolarDataListView(solarInfo: viewModel.solarInfo, viewModel: viewModel)
+                                        .padding(.horizontal)
+                                        .opacity(viewModel.dataLoadingState_isLoading() ? 0.5 : 1.0)
+                                        .overlay {
+                                            if viewModel.dataLoadingState_isLoading() {
+                                                ProgressView()
+                                                    .scaleEffect(1.5)
+                                                    .progressViewStyle(CircularProgressViewStyle(tint: AppColors.primaryAccent))
+                                            }
                                         }
+                                    
+                                    if !viewModel.solarInfo.hourlyUVData.isEmpty {
+                                        HourlyUVChartView(
+                                            hourlyUVData: viewModel.solarInfo.hourlyUVData,
+                                            timezoneIdentifier: viewModel.solarInfo.timezoneIdentifier
+                                        )
+                                        .padding(.horizontal)
                                     }
-                                    .zIndex(10)
-                                    .offset(y: -40)
-                                
-                                if !viewModel.solarInfo.hourlyUVData.isEmpty {
-                                    HourlyUVChartView(
-                                        hourlyUVData: viewModel.solarInfo.hourlyUVData,
-                                        timezoneIdentifier: viewModel.solarInfo.timezoneIdentifier
-                                    )
-                                    .padding(.horizontal)
-                                    .offset(y: -40)
+                                    
+                                    AirQualityView(solarInfo: viewModel.solarInfo)
+                                        .padding(.horizontal)
+                                    
+                                    SolarCountdownView(solarInfo: viewModel.solarInfo, viewModel: viewModel)
+                                        .padding(.horizontal)
+                                    
+                                    GoldenHourView(solarInfo: viewModel.solarInfo, viewModel: viewModel)
+                                        .padding(.horizontal)
                                 }
+                                .offset(y: -40)
                             }
                             Spacer()
                         }
