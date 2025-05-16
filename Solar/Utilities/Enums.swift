@@ -27,3 +27,13 @@ enum UserDefaultsKeys {
     static let lastSelectedCityLongitude = "lastSelectedCityLongitude"
     static let lastSelectedCityTimezoneId = "lastSelectedCityTimezoneId"
 }
+
+enum DataSectionType: String, CaseIterable, Codable, Identifiable {
+    case solarDataList = "Today's Solar Forecast"
+    case hourlyUVChart = "Hourly UV Forecast"
+    case airQuality = "Air Quality"
+    case solarCountdown = "Solar Timings"
+    case goldenHour = "Golden Hour" 
+
+    var id: String { self.rawValue }
+}

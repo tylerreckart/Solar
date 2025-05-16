@@ -11,7 +11,11 @@ import CoreData
 struct ContentView: View {
     @Environment(\.managedObjectContext) private var viewContext
     @StateObject private var viewModel = SunViewModel()
+    @StateObject private var appSettings = AppSettings()
     @State private var showingCitySearchSheet = false
+    @State private var showingSettingsView = false
+    @State private var showShareSheet = false
+    @State private var activityItems: [Any] = []
     @State private var barColor: Color = AppColors.sunriseGradientStart
 
     var body: some View {
@@ -56,34 +60,35 @@ struct ContentView: View {
                                 SunPathView(progress: viewModel.solarInfo.sunProgress, skyCondition: viewModel.currentSkyCondition)
                                     .id(viewModel.solarInfo.city)
                                 
-                                VStack(spacing: 25) {
-                                    SolarDataListView(solarInfo: viewModel.solarInfo, viewModel: viewModel)
-                                        .padding(.horizontal)
-                                        .opacity(viewModel.dataLoadingState_isLoading() ? 0.5 : 1.0)
-                                        .overlay {
-                                            if viewModel.dataLoadingState_isLoading() {
-                                                ProgressView()
-                                                    .scaleEffect(1.5)
-                                                    .progressViewStyle(CircularProgressViewStyle(tint: AppColors.primaryAccent))
+                                VStack(spacing: 25) { // This existing VStack can be reused
+                                    // Filter for visible sections and sort them by the 'order' property
+                                    ForEach(appSettings.dataSections.filter { $0.isVisible }.sorted(by: { $0.order < $1.order }), id: \.type) { sectionSetting in
+                                        // Use a switch to render the correct view for each section type
+                                        switch sectionSetting.type {
+                                        case .solarDataList:
+                                            SolarDataListView(solarInfo: viewModel.solarInfo, viewModel: viewModel)
+                                                .padding(.horizontal)
+                                                // Re-apply opacity and overlay if you want loading states per card
+                                                .opacity(viewModel.dataLoadingState_isLoading() && viewModel.solarInfo.city == "Loading..." ? 0.5 : 1.0)
+                                        case .hourlyUVChart:
+                                            if !viewModel.solarInfo.hourlyUVData.isEmpty {
+                                                HourlyUVChartView(
+                                                    hourlyUVData: viewModel.solarInfo.hourlyUVData,
+                                                    timezoneIdentifier: viewModel.solarInfo.timezoneIdentifier
+                                                )
+                                                .padding(.horizontal)
                                             }
+                                        case .airQuality:
+                                            AirQualityView(solarInfo: viewModel.solarInfo)
+                                                .padding(.horizontal)
+                                        case .solarCountdown:
+                                            SolarCountdownView(solarInfo: viewModel.solarInfo, viewModel: viewModel)
+                                                .padding(.horizontal)
+                                        case .goldenHour:
+                                            GoldenHourView(solarInfo: viewModel.solarInfo, viewModel: viewModel)
+                                                .padding(.horizontal)
                                         }
-                                    
-                                    if !viewModel.solarInfo.hourlyUVData.isEmpty {
-                                        HourlyUVChartView(
-                                            hourlyUVData: viewModel.solarInfo.hourlyUVData,
-                                            timezoneIdentifier: viewModel.solarInfo.timezoneIdentifier
-                                        )
-                                        .padding(.horizontal)
                                     }
-                                    
-                                    AirQualityView(solarInfo: viewModel.solarInfo)
-                                        .padding(.horizontal)
-                                    
-                                    SolarCountdownView(solarInfo: viewModel.solarInfo, viewModel: viewModel)
-                                        .padding(.horizontal)
-                                    
-                                    GoldenHourView(solarInfo: viewModel.solarInfo, viewModel: viewModel)
-                                        .padding(.horizontal)
                                 }
                                 .offset(y: -50)
                             }
@@ -92,18 +97,17 @@ struct ContentView: View {
                     }
                     .background(.black)
                 }
-                
-                // Error Display Area
-//                if case .error(let message) = viewModel.dataLoadingState {
-//                    ErrorView(message: message, retryAction: {
-//                        // Determine appropriate retry action
-//                        if message.lowercased().contains("location") {
-//                             viewModel.requestSolarDataForCurrentLocation()
-//                        } else {
-//                            viewModel.refreshSolarDataForCurrentCity()
-//                        }
-//                    })
-//                }
+
+                if case .error(let message) = viewModel.dataLoadingState {
+                    ErrorView(message: message, retryAction: {
+                        // Determine appropriate retry action
+                        if message.lowercased().contains("location") {
+                             viewModel.requestSolarDataForCurrentLocation()
+                        } else {
+                            viewModel.refreshSolarDataForCurrentCity()
+                        }
+                    })
+                }
             }
             .navigationBarHidden(true)
             .sheet(isPresented: $showingCitySearchSheet) {
@@ -112,10 +116,26 @@ struct ContentView: View {
                     // Use new presentation detents if targeting iOS 16+
                     // .presentationDetents([.medium, .large])
             }
+            .sheet(isPresented: $showingSettingsView) {
+                SettingsView(appSettings: appSettings)
+            }
+            .sheet(isPresented: $showShareSheet) { // For the share sheet
+                if !activityItems.isEmpty {
+                    ActivityView(activityItems: activityItems)
+                } else {
+                    // Fallback or loading view if items are not ready (shouldn't happen with current logic)
+                    Text("Preparing share content...")
+                        .onAppear {
+                            // If it appears without items, dismiss it to avoid getting stuck.
+                            // This is a safeguard.
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                                self.showShareSheet = false
+                            }
+                        }
+                }
+            }
             .onAppear {
-                // Initial data load logic is in ViewModel's init
-                // If you want to refresh on appear:
-                // viewModel.refreshSolarDataForCurrentCity()
+                 viewModel.refreshSolarDataForCurrentCity()
             }
             // Refresh data when the app becomes active, e.g. after being in background
             .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
@@ -130,13 +150,12 @@ struct ContentView: View {
     private func customTopBar() -> some View {
         HStack(alignment: .center) {
             Button(action: {
-                // TODO: Implement share
+                prepareAndShowShareSheet()
             }) {
                 Image(systemName: "square.and.arrow.up")
                     .font(.system(size: 18, weight: .medium))
                     .foregroundColor(.white)
             }
-            .disabled(true) // Remove when implemented
 
             Spacer()
 
@@ -161,15 +180,46 @@ struct ContentView: View {
             Spacer()
 
 
-             Button(action: {
-                // TODO: Implement settings view
+            Button(action: {
+                 showingSettingsView = true
             }) {
                 Image(systemName: "ellipsis.circle")
                      .font(.system(size: 18, weight: .medium))
                      .foregroundColor(.white)
             }
-            .disabled(true) // Remove when implemented
         }
+    }
+    
+    @MainActor
+    private func prepareAndShowShareSheet() {
+        // 1. Define the size for the shareable image
+        let shareImageSize = CGSize(width: 400, height: 450) // Adjust as needed
+
+        // 2. Create the ShareableView instance with current data
+        let shareView = ShareableView(
+            solarInfo: viewModel.solarInfo,
+            skyCondition: viewModel.currentSkyCondition,
+            sunPathProgress: viewModel.solarInfo.sunProgress,
+            barColor: self.barColor // Pass the current bar color
+        )
+
+        // 3. Render the ShareableView to a UIImage
+        guard let image = ViewRenderer.renderViewToImage(shareView, size: shareImageSize) else {
+            print("❌ ContentView: Failed to render shareable image.")
+            return
+        }
+
+        // 4. Prepare activity items
+        var itemsToShare: [Any] = [image]
+        let shareText = "Check out the solar conditions for \(viewModel.solarInfo.city)!" // Customize as needed
+        itemsToShare.append(shareText)
+        // TODO: add a URL to your app on the App Store, etc.
+        // if let appURL = URL(string: "https://apps.apple.com/your-app-id") {
+        //     itemsToShare.append(appURL)
+        // }
+
+        self.activityItems = itemsToShare
+        self.showShareSheet = true // Trigger the share sheet
     }
 }
 
