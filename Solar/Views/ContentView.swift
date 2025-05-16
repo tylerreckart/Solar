@@ -14,13 +14,14 @@ struct ContentView: View {
     @State private var showingCitySearchSheet = false
     @State private var barColor: Color = AppColors.sunriseGradientStart
 
-    // For potential next/prev day (not implemented in ViewModel yet)
-    @State private var selectedDateOffset: Int = 0
-
     var body: some View {
         NavigationView {
             ZStack {
-                Color(self.barColor).edgesIgnoringSafeArea(.all)
+                VStack {
+                    Color(barColor)
+                        .frame(maxHeight: 200)
+                    Spacer()
+                }
 
                 VStack(spacing: 0) {
                     customTopBar()
@@ -43,8 +44,15 @@ struct ContentView: View {
                         }
 
                     ScrollView {
-                        VStack(spacing: 25) { // Increased spacing between major elements
+                        VStack(spacing: 0) { // Increased spacing between major elements
                             if !viewModel.dataLoadingState_isLoading() {
+                                SolarGreetingView(solarInfo: viewModel.solarInfo, skyCondition: viewModel.currentSkyCondition)
+                                        .padding(.top, 40)
+                                        .padding(.horizontal)
+                                        .frame(maxWidth: .infinity)
+                                        .background(self.barColor)
+                                
+                                
                                 SunPathView(progress: viewModel.solarInfo.sunProgress, skyCondition: viewModel.currentSkyCondition)
                                     .id(viewModel.solarInfo.city)
                                 
@@ -77,7 +85,7 @@ struct ContentView: View {
                                     GoldenHourView(solarInfo: viewModel.solarInfo, viewModel: viewModel)
                                         .padding(.horizontal)
                                 }
-                                .offset(y: -40)
+                                .offset(y: -50)
                             }
                             Spacer()
                         }

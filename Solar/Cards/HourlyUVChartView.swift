@@ -43,6 +43,7 @@ struct HourlyUVChartView: View {
             VStack(alignment: .leading, spacing: 8) {
                 Text("Hourly UV Forecast")
                     .font(.system(size: 16, weight: .semibold))
+                    .padding(.top, 5)
                 if hourlyUVData.isEmpty {
                     Text("Hourly UV data is not available for the selected period.")
                         .font(.caption)

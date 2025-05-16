@@ -45,8 +45,8 @@ struct GoldenHourView: View {
                 .foregroundColor(AppColors.secondaryText)
                 .padding(.bottom, 4)
             
-            SolarDataRow(iconName: "camera.fill", label: "Morning Golden Hour", value: morningGoldenHour)
-            SolarDataRow(iconName: "camera.fill", label: "Evening Golden Hour", value: eveningGoldenHour)
+            SolarDataRow(iconName: "sun.lefthalf.filled", label: "Morning Golden Hour", value: morningGoldenHour)
+            SolarDataRow(iconName: "sun.righthalf.filled", label: "Evening Golden Hour", value: eveningGoldenHour)
         }
         .padding()
         .foregroundColor(.white)

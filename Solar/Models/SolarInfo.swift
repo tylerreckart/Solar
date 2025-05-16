@@ -128,6 +128,12 @@ struct SolarInfo: Equatable {
         guard now < solarNoon else { return nil }
         return formatTimeDifference(from: now, to: solarNoon, futurePrefix: "", pastSuffix: "ago", defaultString: "N/A")
     }
+    
+    var timeFromSolarNoon: String? {
+        let now = Date()
+        guard now >= solarNoon else { return nil }
+        return formatTimeDifference(from: solarNoon, to: now, futurePrefix: "", pastSuffix: "ago", defaultString: "N/A", isDuration: true)
+    }
 
     var timeToSunset: String? {
         let now = Date()
@@ -144,21 +150,35 @@ struct SolarInfo: Equatable {
     public func formatTimeDifference(from: Date, to: Date, futurePrefix: String, pastSuffix: String, defaultString: String, isDuration: Bool = false) -> String {
         let components = Calendar.current.dateComponents([.hour, .minute], from: from, to: to)
         guard let hour = components.hour, let minute = components.minute else { return defaultString }
-
-        if !isDuration && hour < 0 || (!isDuration && hour == 0 && minute < 0) { // Event is in the past
-            return defaultString // Or specific "Past" message could be handled by caller
+        
+        if !isDuration && hour < 0 || (!isDuration && hour == 0 && minute < 0) {
+            return defaultString
         }
         
         if hour == 0 && minute == 0 && !isDuration { return "Now" }
-
+        
         var result = futurePrefix
         if hour > 0 { result += "\(hour)h " }
-        if minute > 0 || hour == 0 { result += "\(minute)m" } // show 0m if only minutes left or it's exactly on the hour
-        if !isDuration { result += "" } // " remaining" or similar can be added by caller
-        else { result += " " + pastSuffix }
-
-
-        return result.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? (isDuration ? "0m ago" : "Now") : result.trimmingCharacters(in: .whitespacesAndNewlines)
+        if minute > 0 || (hour == 0 && minute == 0 && isDuration) { // Show 0m ago if duration and exactly on the mark
+            result += "\(minute)m"
+        } else if minute > 0 { // For "to" events, if hour is 0, show minutes
+            result += "\(minute)m"
+        }
+        
+        
+        if isDuration { result += " " + pastSuffix }
+        
+        let trimmedResult = result.trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        if trimmedResult.isEmpty {
+            return isDuration ? "Just now" : "Now"
+        }
+        // Ensure "0m" is not shown alone for "to" events if it's exactly on the hour.
+        if !isDuration && hour > 0 && minute == 0 {
+            return "\(hour)h"
+        }
+        
+        return trimmedResult
     }
 
     var daylightDuration: String {

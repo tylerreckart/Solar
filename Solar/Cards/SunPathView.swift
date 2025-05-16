@@ -39,7 +39,7 @@ struct SunPathView: View {
     let skyCondition: SkyCondition
 
     private let pathXInsetFactor: CGFloat = 0.1
-    private let pathYBaseFactor: CGFloat = 0.85
+    private let pathYBaseFactor: CGFloat = 0.5
     private let pathPeakHeightFactor: CGFloat = 0.001
 
 

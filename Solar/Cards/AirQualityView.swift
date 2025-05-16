@@ -27,7 +27,7 @@ struct AirQualityView: View {
                 .padding(.bottom, 2)
 
             if let usAQI = solarInfo.usAQI {
-                SolarDataRow(iconName: "aqi.low", label: "US AQI", value: "\(usAQI) (\(solarInfo.usAQICategory))", valueColor: aqiColor)
+                SolarDataRow(iconName: "aqi.medium", label: "US AQI", value: "\(usAQI) (\(solarInfo.usAQICategory))", valueColor: aqiColor)
             } else {
                 SolarDataRow(iconName: "aqi.low", label: "US AQI", value: "N/A")
             }

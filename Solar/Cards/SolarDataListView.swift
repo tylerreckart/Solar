@@ -16,7 +16,7 @@ struct SolarDataRow: View {
     var body: some View {
         HStack(alignment: .center, spacing: 15) {
             Image(systemName: iconName)
-                .font(.system(size: 18, weight: .medium))
+                .font(.system(size: 18, weight: .bold))
                 .symbolRenderingMode(.hierarchical)
                 .foregroundColor(AppColors.primaryAccent)
                 .frame(width: 28, alignment: .center)
@@ -46,7 +46,6 @@ struct SolarDataListView: View {
             SolarDataRow(iconName: "sunrise.fill", label: "Sunrise", value: viewModel.formatTime(solarInfo.sunrise))
             SolarDataRow(iconName: "sunset.fill", label: "Sunset", value: viewModel.formatTime(solarInfo.sunset))
             SolarDataRow(iconName: "sun.max.fill", label: "Solar Noon", value: viewModel.formatTime(solarInfo.solarNoon))
-            SolarDataRow(iconName: "timer", label: "Time to Noon", value: solarInfo.timeToSolarNoon ?? "")
             SolarDataRow(iconName: "arrow.up.and.down.circle.fill", label: "Altitude", value: String(format: "%.1f°", solarInfo.currentAltitude))
             SolarDataRow(iconName: "safari.fill", label: "Azimuth", value: String(format: "%.1f°", solarInfo.currentAzimuth))
             SolarDataRow(iconName: "sun.max.trianglebadge.exclamationmark.fill",
