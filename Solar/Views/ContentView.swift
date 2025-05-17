@@ -119,23 +119,11 @@ struct ContentView: View {
             .sheet(isPresented: $showingSettingsView) {
                 SettingsView(appSettings: appSettings)
             }
-            .sheet(isPresented: $showShareSheet) { // For the share sheet
-                if !activityItems.isEmpty {
-                    ActivityView(activityItems: activityItems)
-                } else {
-                    // Fallback or loading view if items are not ready (shouldn't happen with current logic)
-                    Text("Preparing share content...")
-                        .onAppear {
-                            // If it appears without items, dismiss it to avoid getting stuck.
-                            // This is a safeguard.
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                                self.showShareSheet = false
-                            }
-                        }
-                }
+            .sheet(isPresented: $showShareSheet) {
+                ActivityView(activityItems: activityItems)
             }
             .onAppear {
-                 viewModel.refreshSolarDataForCurrentCity()
+                viewModel.refreshSolarDataForCurrentCity()
             }
             // Refresh data when the app becomes active, e.g. after being in background
             .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
@@ -192,34 +180,18 @@ struct ContentView: View {
     
     @MainActor
     private func prepareAndShowShareSheet() {
-        // 1. Define the size for the shareable image
-        let shareImageSize = CGSize(width: 400, height: 450) // Adjust as needed
+        var itemsToShare: [Any] = []
 
-        // 2. Create the ShareableView instance with current data
-        let shareView = ShareableView(
-            solarInfo: viewModel.solarInfo,
-            skyCondition: viewModel.currentSkyCondition,
-            sunPathProgress: viewModel.solarInfo.sunProgress,
-            barColor: self.barColor // Pass the current bar color
-        )
-
-        // 3. Render the ShareableView to a UIImage
-        guard let image = ViewRenderer.renderViewToImage(shareView, size: shareImageSize) else {
-            print("❌ ContentView: Failed to render shareable image.")
-            return
-        }
-
-        // 4. Prepare activity items
-        var itemsToShare: [Any] = [image]
-        let shareText = "Check out the solar conditions for \(viewModel.solarInfo.city)!" // Customize as needed
+        // 5. Prepare activity items with the generated image
+        let shareText = "Check out the solar conditions for \(viewModel.solarInfo.city)!"
         itemsToShare.append(shareText)
-        // TODO: add a URL to your app on the App Store, etc.
-        // if let appURL = URL(string: "https://apps.apple.com/your-app-id") {
-        //     itemsToShare.append(appURL)
-        // }
+        
+         if let appURL = URL(string: "https://apps.apple.com/6745826724") {
+             itemsToShare.append(appURL)
+         }
 
         self.activityItems = itemsToShare
-        self.showShareSheet = true // Trigger the share sheet
+        self.showShareSheet = true
     }
 }
 

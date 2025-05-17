@@ -74,24 +74,32 @@ class SunViewModel: ObservableObject {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] placemark in
                 guard let self = self else { return }
-                // This is part of the "Use Current Location" flow
+
+                // This is the critical gate: SunViewModel is waiting for a placemark.
                 if self.isFetchingLocationDetails {
-                    if let placemark = placemark, let location = placemark.location {
-                        let cityName = placemark.locality ?? placemark.name ?? "Current Location"
-                        // Store the timezone from CLPlacemark if available
-                        let clTimezoneIdentifier = placemark.timeZone?.identifier
+                    if let validPlacemark = placemark, let location = validPlacemark.location {
+                        let cityName = validPlacemark.locality ?? validPlacemark.name ?? "Current Location"
+                        let clTimezoneIdentifier = validPlacemark.timeZone?.identifier
                         
+                        print("📍 SunViewModel: Placemark received for '\(cityName)'. Updating solar data.")
                         Task {
-                            // Pass clTimezoneIdentifier to be potentially stored if API doesn't provide one
-                            // (though Open-Meteo usually does)
+                            // updateSolarDataForCity will handle setting dataLoadingState to .success or .error
                             await self.updateSolarDataForCity(name: cityName,
                                                               latitude: location.coordinate.latitude,
                                                               longitude: location.coordinate.longitude,
                                                               explicitTimezoneIdentifier: clTimezoneIdentifier)
                         }
-                    } else if self.locationManager.error != nil {
-                         self.dataLoadingState = .error(message: self.locationManager.error?.localizedDescription ?? "Failed to get location details.")
+                    } else if let locError = self.locationManager.error {
+                        // If LocationManager itself had an error during the fetch period
+                        print("❌ SunViewModel: Location manager error during active fetch: \(locError.localizedDescription)")
+                        self.dataLoadingState = .error(message: locError.localizedDescription)
+                    } else {
+                        // Placemark is nil, but no specific error from locationManager.error property.
+                        // This implies reverse geocoding might have failed to find a placemark.
+                        print("⚠️ SunViewModel: Valid placemark not found during active fetch.")
+                        self.dataLoadingState = .error(message: LocationError.reverseGeocodingFailed(nil).localizedDescription)
                     }
+                    // Crucially, reset the flag AFTER attempting to process or acknowledge failure.
                     self.isFetchingLocationDetails = false
                 }
             }
@@ -105,33 +113,39 @@ class SunViewModel: ObservableObject {
                 print("☀️ SunViewModel: Location auth status changed to \(self.locationManager.statusString)")
                 switch status {
                 case .authorizedWhenInUse, .authorizedAlways:
-                     if self.solarInfo.city == "Loading..." || self.solarInfo.city == "Philadelphia" {
+                    // If solarInfo is still placeholder, try to get current location.
+                    // This might be called on app start or if permissions change later.
+                    if self.solarInfo.city == SolarInfo.placeholder().city && !self.dataLoadingState_isLoading() && !self.isFetchingLocationDetails {
+                        print("☀️ SunViewModel: Auth OK and city is placeholder, requesting current location.")
                         self.requestSolarDataForCurrentLocation()
                     }
                 case .denied:
                     self.dataLoadingState = .error(message: LocationError.authorizationDenied.localizedDescription)
+                    self.isFetchingLocationDetails = false // Stop any pending fetch
                 case .restricted:
-                     self.dataLoadingState = .error(message: LocationError.authorizationRestricted.localizedDescription)
+                    self.dataLoadingState = .error(message: LocationError.authorizationRestricted.localizedDescription)
+                    self.isFetchingLocationDetails = false // Stop any pending fetch
                 case .notDetermined:
-                    self.dataLoadingState = .idle
+                    if self.solarInfo.city == SolarInfo.placeholder().city {
+                        self.dataLoadingState = .error(message: "Tap the location icon above to grant location access or search for a city.")
+                    }
+                    self.isFetchingLocationDetails = false // Stop any pending fetch if one was somehow active
                 default:
                     self.dataLoadingState = .error(message: "Unknown location permission status.")
+                    self.isFetchingLocationDetails = false // Stop any pending fetch
                 }
             }
-            .store(in: &cancellables)
-            
-        locationManager.$isFetchingLocation
-            .receive(on: DispatchQueue.main)
-            .assign(to: \.isFetchingLocationDetails, on: self)
             .store(in: &cancellables)
 
         locationManager.$error
             .receive(on: DispatchQueue.main)
             .sink { [weak self] error in
-                guard let self = self, let error = error else { return }
-                if self.isFetchingLocationDetails || self.dataLoadingState_isLoading() {
-                    self.dataLoadingState = .error(message: error.localizedDescription)
-                    self.isFetchingLocationDetails = false
+                guard let self = self, let receivedError = error else { return }
+                // Only update SunViewModel's state if it was actively trying to fetch location details.
+                if self.isFetchingLocationDetails {
+                    print("❌ SunViewModel: LocationManager error received during active fetch: \(receivedError.localizedDescription)")
+                    self.dataLoadingState = .error(message: receivedError.localizedDescription)
+                    self.isFetchingLocationDetails = false // Reset the flag on error too
                 }
             }
             .store(in: &cancellables)
@@ -158,12 +172,31 @@ class SunViewModel: ObservableObject {
     }
 
     func requestSolarDataForCurrentLocation() {
-        // ... (same as before)
-        guard !isFetchingLocationDetails else { return }
+        guard !isFetchingLocationDetails else {
+            print("☀️ SunViewModel: Already fetching location details.")
+            return
+        }
+        
         print("☀️ SunViewModel: Requesting solar data for current location.")
-        isFetchingLocationDetails = true
-        dataLoadingState = .loading
-        locationManager.requestCurrentLocation()
+        
+        switch locationManager.authorizationStatus {
+        case .authorizedWhenInUse, .authorizedAlways:
+            self.isFetchingLocationDetails = true // ViewModel is now officially waiting
+            self.dataLoadingState = .loading     // Set loading state for UI
+            locationManager.requestCurrentLocation()
+        case .notDetermined:
+            // We don't set isFetchingLocationDetails to true here because LocationManager
+            // will first ask for permission. The auth status change will be handled.
+            locationManager.requestLocationPermission()
+            // Update UI to guide user
+            self.dataLoadingState = .error(message: "Please grant location permission when prompted.")
+        case .denied:
+            self.dataLoadingState = .error(message: LocationError.authorizationDenied.localizedDescription + " Please enable it in Settings.")
+        case .restricted:
+            self.dataLoadingState = .error(message: LocationError.authorizationRestricted.localizedDescription)
+        @unknown default:
+            self.dataLoadingState = .error(message: "Unknown location permission status.")
+        }
     }
 
     func selectCity(name: String, latitude: Double?, longitude: Double?, timezoneIdentifier: String? = nil) {
@@ -312,28 +345,23 @@ class SunViewModel: ObservableObject {
             }
             
             let dailyApiData = apiResponse.daily
-                        
-            let civilTwilightBegin = dailyApiData.civil_twilight_begin?.first.flatMap { $0 }
-                .flatMap { solarAPIService.parseDateTimeString($0, timezoneIdentifier: locationTimezoneIdentifier) }
-            let civilTwilightEnd = dailyApiData.civil_twilight_end?.first.flatMap { $0 }
-                .flatMap { solarAPIService.parseDateTimeString($0, timezoneIdentifier: locationTimezoneIdentifier) }
-            
-            let nauticalTwilightBegin = dailyApiData.nautical_twilight_begin?.first.flatMap { $0 }
-                .flatMap { solarAPIService.parseDateTimeString($0, timezoneIdentifier: locationTimezoneIdentifier) }
-            let nauticalTwilightEnd = dailyApiData.nautical_twilight_end?.first.flatMap { $0 }
-                .flatMap { solarAPIService.parseDateTimeString($0, timezoneIdentifier: locationTimezoneIdentifier) }
-
-            let astronomicalTwilightBegin = dailyApiData.astronomical_twilight_begin?.first.flatMap { $0 }
-                .flatMap { solarAPIService.parseDateTimeString($0, timezoneIdentifier: locationTimezoneIdentifier) }
-            let astronomicalTwilightEnd = dailyApiData.astronomical_twilight_end?.first.flatMap { $0 }
-                .flatMap { solarAPIService.parseDateTimeString($0, timezoneIdentifier: locationTimezoneIdentifier) }
-
-            let moonrise = dailyApiData.moonrise?.first.flatMap { $0 } // $0 is String?
-                .flatMap { solarAPIService.parseDateTimeString($0, timezoneIdentifier: locationTimezoneIdentifier) }
-            let moonset = dailyApiData.moonset?.first.flatMap { $0 }
-                .flatMap { solarAPIService.parseDateTimeString($0, timezoneIdentifier: locationTimezoneIdentifier) }
-            
+                                    
+            let civilTwilightBegin = dailyApiData.civil_twilight_begin?.first.flatMap { $0 }.flatMap { solarAPIService.parseDateTimeString($0, timezoneIdentifier: locationTimezoneIdentifier) }
+            let civilTwilightEnd = dailyApiData.civil_twilight_end?.first.flatMap { $0 }.flatMap { solarAPIService.parseDateTimeString($0, timezoneIdentifier: locationTimezoneIdentifier) }
+            let nauticalTwilightBegin = dailyApiData.nautical_twilight_begin?.first.flatMap { $0 }.flatMap { solarAPIService.parseDateTimeString($0, timezoneIdentifier: locationTimezoneIdentifier) }
+            let nauticalTwilightEnd = dailyApiData.nautical_twilight_end?.first.flatMap { $0 }.flatMap { solarAPIService.parseDateTimeString($0, timezoneIdentifier: locationTimezoneIdentifier) }
+            let astronomicalTwilightBegin = dailyApiData.astronomical_twilight_begin?.first.flatMap { $0 }.flatMap { solarAPIService.parseDateTimeString($0, timezoneIdentifier: locationTimezoneIdentifier) }
+            let astronomicalTwilightEnd = dailyApiData.astronomical_twilight_end?.first.flatMap { $0 }.flatMap { solarAPIService.parseDateTimeString($0, timezoneIdentifier: locationTimezoneIdentifier) }
+            let moonrise = dailyApiData.moonrise?.first.flatMap { $0 }.flatMap { solarAPIService.parseDateTimeString($0, timezoneIdentifier: locationTimezoneIdentifier) }
+            let moonset = dailyApiData.moonset?.first.flatMap { $0 }.flatMap { solarAPIService.parseDateTimeString($0, timezoneIdentifier: locationTimezoneIdentifier) }
             let moonIllumination = dailyApiData.moon_phase?.first.flatMap { $0 }
+            
+            let currentSunPosition = SunPositionCalculator.calculateSunPosition(
+                date: Date(),
+                latitude: lat,
+                longitude: lon,
+                timezoneIdentifier: locationTimezoneIdentifier
+            )
 
             self.solarInfo = SolarInfo(
                 city: name,
@@ -345,8 +373,8 @@ class SunViewModel: ObservableObject {
                 solarNoon: solarNoonDate,
                 timezoneIdentifier: locationTimezoneIdentifier,
                 hourlyUVData: parsedHourlyUV,
-                currentAltitude: calculateSunAltitude(latitude: lat, date: Date(), timezoneIdentifier: locationTimezoneIdentifier),
-                currentAzimuth: calculateSunAzimuth(latitude: lat, date: Date(), timezoneIdentifier: locationTimezoneIdentifier),
+                currentAltitude:  currentSunPosition?.altitude ?? 0.0,
+                currentAzimuth: currentSunPosition?.azimuth ?? 0.0,
                 uvIndex: uvIndexInt,
                 uvIndexCategory: uvCategory,
                 civilTwilightBegin: civilTwilightBegin,
@@ -449,22 +477,14 @@ class SunViewModel: ObservableObject {
         print("🌅 SunViewModel: Sky condition updated to: \(currentSkyCondition)")
     }
 
-    // Sun position calculations need to know the local solar time at the location.
-    // One way is to use the location's timezone to determine the local hour for `date`.
     private func calculateSunAltitude(latitude: Double, date: Date, timezoneIdentifier: String?) -> Double {
-        // This still needs a proper astronomical library.
-        // For a slightly more contextual placeholder, we could adjust "progress"
-        // based on the local time at the location.
-        let progress = solarInfo.sunProgress // This progress is already correct (universal time vs universal event times)
-        let maxAltitude = 70.0
-        let altitude = maxAltitude * sin(progress * .pi)
-        return max(0, altitude)
+        guard let tzId = timezoneIdentifier else { return 0.0 }
+        return SunPositionCalculator.calculateSunPosition(date: date, latitude: latitude, longitude: self.solarInfo.longitude ?? 0.0, timezoneIdentifier: tzId)?.altitude ?? 0.0
     }
 
     private func calculateSunAzimuth(latitude: Double, date: Date, timezoneIdentifier: String?) -> Double {
-        let progress = solarInfo.sunProgress
-        let azimuth = 90 + (progress * 180)
-        return azimuth
+        guard let tzId = timezoneIdentifier else { return 0.0 }
+        return SunPositionCalculator.calculateSunPosition(date: date, latitude: latitude, longitude: self.solarInfo.longitude ?? 0.0, timezoneIdentifier: tzId)?.azimuth ?? 0.0
     }
     
     func refreshSolarDataForCurrentCity() {
