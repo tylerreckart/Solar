@@ -13,51 +13,114 @@ struct SettingsView: View {
 
     var body: some View {
         NavigationView {
-            List {
-                Section(header: Text("Customize Data Sections").font(.subheadline)) {
-                    Text("Enable or disable sections and drag them to change their order on the main screen.")
-                        .font(.caption)
-                        .foregroundColor(.gray)
-                        .padding(.bottom, 5)
+            VStack {
+                Section {
+                    VStack {
+                        VStack {
+                            HStack {
+                                Text("Enable or disable data sections on the main screen.")
+                                    .font(.caption)
+                                    .foregroundColor(.gray)
+                                    .padding(.bottom, 5)
+                                Spacer()
+                            }
+                            Divider()
+                        }
+                        
+                        ForEach($appSettings.dataSections, id: \.type) { $sectionSetting in
+                            VStack {
+                                HStack {
+                                    Text(sectionSetting.type.rawValue)
+                                        .foregroundColor(.white)
+                                        .fontWeight(.semibold)
+                                    Spacer()
+                                    Toggle("", isOn: $sectionSetting.isVisible)
+                                        .labelsHidden()
+                                        .tint(AppColors.primaryAccent)
+                                }
+                                Divider()
+                            }
+                        }
+                        .onMove(perform: appSettings.moveSection)
+                    }
+                    .padding()
+                    .background(AppColors.ui)
+                    .cornerRadius(16)
+                } header: {
+                    HStack {
+                        Text("Customization")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(Color(.systemGray))
+                            .textCase(nil)
 
-                    ForEach($appSettings.dataSections, id: \.type) { $sectionSetting in
+                        Spacer()
+                    }
+                    .padding(.horizontal, 15)
+                    .padding(.top)
+                }
+                .padding(.horizontal)
+
+                Section {
+                    VStack(alignment: .leading) {
                         HStack {
-                            Text(sectionSetting.type.rawValue) // Display name from enum
+                            Link("Terms of Service", destination: URL(string: "https://www.example.com/terms")!)
+                                .foregroundColor(AppColors.primaryAccent)
                             Spacer()
-                            Toggle("", isOn: $sectionSetting.isVisible)
-                                .labelsHidden() // Hides the default "Toggle" label
-                                .tint(AppColors.primaryAccent)
+                        }
+                        Divider()
+                        HStack {
+                            Link("Privacy Policy", destination: URL(string: "https://www.example.com/privacy")!)
+                                .foregroundColor(AppColors.primaryAccent)
+                            Spacer()
+                        }
+                        Divider()
+                        HStack {
+                            Link("API Usage & Acknowledgements", destination: URL(string: "https://open-meteo.com")!) // Link to Open-Meteo as an example
+                                .foregroundColor(AppColors.primaryAccent)
+                            Spacer()
                         }
                     }
-                    .onMove(perform: appSettings.moveSection)
-                }
+                    .padding()
+                    .background(AppColors.ui)
+                    .cornerRadius(16)
+                } header: {
+                    HStack {
+                        Text("Legal")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(Color(.systemGray))
+                            .textCase(nil)
 
-                Section(header: Text("About & Legal").font(.subheadline)) {
-                    Link("Terms of Service", destination: URL(string: "https://www.example.com/terms")!)
-                        .foregroundColor(AppColors.primaryAccent)
-                    Link("Privacy Policy", destination: URL(string: "https://www.example.com/privacy")!)
-                        .foregroundColor(AppColors.primaryAccent)
-                    Link("API Usage & Acknowledgements", destination: URL(string: "https://open-meteo.com")!) // Link to Open-Meteo as an example
-                        .foregroundColor(AppColors.primaryAccent)
+                        Spacer()
+                    }
+                    .padding(.horizontal, 15)
+                    .padding(.top)
                 }
+                .padding(.horizontal)
+                
+                Spacer()
             }
+            .padding(.top, 50)
+            .edgesIgnoringSafeArea(.all)
+            .scrollContentBackground(.hidden)
+            .listStyle(.insetGrouped)
+            .background(.black)
             .listStyle(InsetGroupedListStyle())
-            .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    EditButton() // Enables list reordering functionality
-                        .foregroundColor(AppColors.primaryAccent)
-                }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Done") {
                         dismiss()
                     }
                     .foregroundColor(AppColors.primaryAccent)
                 }
+                ToolbarItem(placement: .principal) {
+                    Text("Settings")
+                        .foregroundColor(.white)
+                        .font(.system(size: 16, weight: .bold))
+                }
             }
         }
-        .tint(AppColors.primaryAccent) // Sets the accent color for the NavigationView
+        .tint(AppColors.primaryAccent)
     }
 }
 

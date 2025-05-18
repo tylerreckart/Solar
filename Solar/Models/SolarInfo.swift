@@ -189,46 +189,71 @@ struct SolarInfo: Equatable {
 
     var sunProgress: Double {
         let now = Date()
-        // Ensure dates are for the same day for accurate progress
+        // If using placeholder dates, show sun at noon for a neutral position.
+        if sunrise == SolarInfo.placeholderDate() || sunset == SolarInfo.placeholderDate() {
+            return 0.5 // Noon position
+        }
+
         guard Calendar.current.isDate(now, inSameDayAs: sunrise) else {
-            if now < sunrise { return 0.0 } // Before sunrise on the current day
-            if now > sunset { return 1.0 } // After sunset on the current day
-            return 0.0 // Default if dates are mismatched significantly
+            if now < sunrise { return 0.0 }
+            if now > sunset { return 1.0 }
+            return 0.0
         }
 
         let totalDaylightSeconds = sunset.timeIntervalSince(sunrise)
-        if totalDaylightSeconds <= 0 { return now > sunset ? 1.0 : 0.0 } // Handles edge cases or invalid data
+        if totalDaylightSeconds <= 0 { return now > sunset ? 1.0 : 0.0 }
         
         let secondsSinceSunrise = now.timeIntervalSince(sunrise)
         let progress = secondsSinceSunrise / totalDaylightSeconds
         return max(0.0, min(1.0, progress))
     }
+    
+    // Helper to get a consistent placeholder date
+    private static func placeholderDate() -> Date {
+        var components = DateComponents()
+        components.year = 2000 // A fixed old date to clearly identify it as placeholder
+        components.month = 1
+        components.day = 1
+        components.hour = 12
+        return Calendar.current.date(from: components) ?? Date()
+    }
 
     static func placeholder(city: String = "Loading...", lat: Double? = nil, lon: Double? = nil) -> SolarInfo {
-        let calendar = Calendar.current
-        var components = DateComponents()
-        components.year = Calendar.current.component(.year, from: Date())
-        components.month = Calendar.current.component(.month, from: Date())
-        components.day = Calendar.current.component(.day, from: Date())
+        let phDate = placeholderDate()
         
-        let placeholderDate = calendar.date(from: components) ?? Date()
-        
-        // Create somewhat realistic placeholders based on current time if possible
-        let sunriseDate = calendar.date(bySettingHour: 6, minute: 0, second: 0, of: placeholderDate) ?? Date()
-        let sunsetDate = calendar.date(bySettingHour: 18, minute: 0, second: 0, of: placeholderDate) ?? Date()
-        let solarNoonDate = calendar.date(bySettingHour: 12, minute: 0, second: 0, of: placeholderDate) ?? Date()
+        // Create a few placeholder UV data points for skeleton UI
+        let placeholderHourlyUV = (0..<5).map { i in
+            HourlyUV(time: Calendar.current.date(byAdding: .hour, value: i, to: Date()) ?? Date(), uvIndex: 0)
+        }
 
         return SolarInfo(
-                    city: city, latitude: lat, longitude: lon, currentDate: placeholderDate,
-                    sunrise: sunriseDate, sunset: sunsetDate, solarNoon: solarNoonDate,
-                    timezoneIdentifier: TimeZone.current.identifier, hourlyUVData: [], currentAltitude: 0.0, currentAzimuth: 0.0,
-                    uvIndex: 0, uvIndexCategory: "Low",
-                    civilTwilightBegin: nil, civilTwilightEnd: nil,
-                    nauticalTwilightBegin: nil, nauticalTwilightEnd: nil,
-                    astronomicalTwilightBegin: nil, astronomicalTwilightEnd: nil,
-                    usAQI: nil, pm2_5: nil, ozone: nil,
-                    moonrise: nil, moonset: nil, moonIlluminationFraction: nil,
-                    weatherCode: nil, cloudCover: nil
-                )
+            city: city,
+            latitude: lat, // Could be nil initially
+            longitude: lon, // Could be nil initially
+            currentDate: Date(), // Current actual date for "Today" context
+            sunrise: phDate,
+            sunset: phDate,
+            solarNoon: phDate,
+            timezoneIdentifier: TimeZone.current.identifier, // Default to current, API will override
+            hourlyUVData: placeholderHourlyUV, // Provide some skeleton data
+            currentAltitude: 0.0,
+            currentAzimuth: 90.0, // East, neutral placeholder
+            uvIndex: 0,
+            uvIndexCategory: "Low",
+            civilTwilightBegin: phDate,
+            civilTwilightEnd: phDate,
+            nauticalTwilightBegin: phDate,
+            nauticalTwilightEnd: phDate,
+            astronomicalTwilightBegin: phDate,
+            astronomicalTwilightEnd: phDate,
+            usAQI: nil, // Keep as nil for "N/A" display
+            pm2_5: nil,
+            ozone: nil,
+            moonrise: phDate,
+            moonset: phDate,
+            moonIlluminationFraction: 0.5, // Neutral placeholder
+            weatherCode: nil, // No placeholder weather code
+            cloudCover: nil // No placeholder cloud cover
+        )
     }
 }

@@ -62,7 +62,6 @@ struct HourlyUVChartView: View {
                                     RoundedRectangle(cornerRadius: barCornerRadius)
                                         .fill(AppColors.uvColor(for: uvItem.uvCategory))
                                         .frame(width: barWidth, height: calculateBarHeight(for: uvItem.uvIndex))
-                                        .animation(.spring(response: 0.4, dampingFraction: 0.6), value: uvItem.uvIndex) // Nice spring animation
                                     
                                     Text(timeString(for: uvItem.time))
                                         .font(.system(size: 10, weight: .medium))

@@ -16,6 +16,7 @@ struct SolarApp: App {
             ContentView()
                 .environment(\.managedObjectContext, persistenceController.container.viewContext)
                 .fontDesign(.rounded)
+                .preferredColorScheme(.dark)
         }
     }
 }

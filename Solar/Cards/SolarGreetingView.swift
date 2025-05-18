@@ -82,9 +82,7 @@ struct SolarGreetingView: View {
                 .padding(.vertical, 8)
                 .multilineTextAlignment(.center)
                 .foregroundColor(.white)
-                .transition(.opacity.combined(with: .scale(scale: 0.95))) // Subtle animation
-                .animation(.easeInOut(duration: 0.3), value: greetingMessage)
-                .id(greetingMessage) // Ensures view updates when message changes
+                .id(greetingMessage)
         }
         .padding(.horizontal)
     }

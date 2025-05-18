@@ -16,22 +16,16 @@ struct ContentView: View {
     @State private var showingSettingsView = false
     @State private var showShareSheet = false
     @State private var activityItems: [Any] = []
-    @State private var barColor: Color = AppColors.sunriseGradientStart
+    @State private var barColor: Color = AppColors.daylightGradientStart
 
     var body: some View {
         NavigationView {
             ZStack {
-                VStack {
-                    Color(barColor)
-                        .frame(maxHeight: 200)
-                    Spacer()
-                }
-
                 VStack(spacing: 0) {
-                    customTopBar()
+                    NavBar()
                         .edgesIgnoringSafeArea(.all)
                         .padding(.horizontal)
-                        .padding(.top, 10) // Adjust for notch or status bar
+                        .padding(.top, 10)
                         .padding(.bottom, 5)
                         .background(self.barColor)
                         .onChange(of: viewModel.solarInfo) {
@@ -46,30 +40,28 @@ struct ContentView: View {
                                 self.barColor = AppColors.nightGradientStart
                             }
                         }
-
+                    
                     ScrollView {
-                        VStack(spacing: 0) { // Increased spacing between major elements
-                            if !viewModel.dataLoadingState_isLoading() {
-                                SolarGreetingView(solarInfo: viewModel.solarInfo, skyCondition: viewModel.currentSkyCondition)
-                                        .padding(.top, 40)
-                                        .padding(.horizontal)
-                                        .frame(maxWidth: .infinity)
-                                        .background(self.barColor)
-                                
-                                
-                                SunPathView(progress: viewModel.solarInfo.sunProgress, skyCondition: viewModel.currentSkyCondition)
-                                    .id(viewModel.solarInfo.city)
-                                
-                                VStack(spacing: 25) { // This existing VStack can be reused
-                                    // Filter for visible sections and sort them by the 'order' property
+                        VStack(spacing: 0) {
+                            SolarGreetingView(solarInfo: viewModel.solarInfo, skyCondition: viewModel.currentSkyCondition)
+                                .padding(.top, 40)
+                                .padding(.horizontal)
+                                .frame(maxWidth: .infinity)
+                                .background(self.barColor)
+                            
+                            
+                            SunPathView(progress: viewModel.solarInfo.sunProgress, skyCondition: viewModel.currentSkyCondition)
+                                .id(viewModel.solarInfo.city)
+                            
+                            ZStack {
+                                Color.black.frame(maxHeight: .infinity).edgesIgnoringSafeArea(.all)
+
+                                VStack(spacing: 25) {
                                     ForEach(appSettings.dataSections.filter { $0.isVisible }.sorted(by: { $0.order < $1.order }), id: \.type) { sectionSetting in
-                                        // Use a switch to render the correct view for each section type
                                         switch sectionSetting.type {
                                         case .solarDataList:
                                             SolarDataListView(solarInfo: viewModel.solarInfo, viewModel: viewModel)
                                                 .padding(.horizontal)
-                                                // Re-apply opacity and overlay if you want loading states per card
-                                                .opacity(viewModel.dataLoadingState_isLoading() && viewModel.solarInfo.city == "Loading..." ? 0.5 : 1.0)
                                         case .hourlyUVChart:
                                             if !viewModel.solarInfo.hourlyUVData.isEmpty {
                                                 HourlyUVChartView(
@@ -89,53 +81,49 @@ struct ContentView: View {
                                                 .padding(.horizontal)
                                         }
                                     }
+                                    
+                                    Spacer()
                                 }
                                 .offset(y: -50)
                             }
-                            Spacer()
                         }
                     }
-                    .background(.black)
+                    .background(LinearGradient(
+                        gradient: Gradient(stops: [
+                            .init(color: barColor, location: 0.0),
+                            .init(color: barColor, location: 0.5),
+                            .init(color: .black, location: 0.5),
+                            .init(color: .black, location: 1.0)
+                        ]),
+                        startPoint: .top,
+                        endPoint: .bottom
+                    ))
+                    .clipped()
+                    .edgesIgnoringSafeArea(.bottom)
                 }
-
-                if case .error(let message) = viewModel.dataLoadingState {
-                    ErrorView(message: message, retryAction: {
-                        // Determine appropriate retry action
-                        if message.lowercased().contains("location") {
-                             viewModel.requestSolarDataForCurrentLocation()
-                        } else {
-                            viewModel.refreshSolarDataForCurrentCity()
-                        }
-                    })
+                .navigationBarHidden(true)
+                .onAppear {
+                    viewModel.refreshSolarDataForCurrentCity()
+                }
+                .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
+                    viewModel.refreshSolarDataForCurrentCity()
+                }
+                .sheet(isPresented: $showingCitySearchSheet) {
+                    CitySearchView(viewModel: viewModel).environment(\.managedObjectContext, self.viewContext)
+                }
+                .sheet(isPresented: $showingSettingsView) {
+                    SettingsView(appSettings: appSettings)
+                }
+                .sheet(isPresented: $showShareSheet) {
+                    ActivityView(activityItems: activityItems)
                 }
             }
-            .navigationBarHidden(true)
-            .sheet(isPresented: $showingCitySearchSheet) {
-                CitySearchView(viewModel: viewModel)
-                    .environment(\.managedObjectContext, self.viewContext)
-                    // Use new presentation detents if targeting iOS 16+
-                    // .presentationDetents([.medium, .large])
-            }
-            .sheet(isPresented: $showingSettingsView) {
-                SettingsView(appSettings: appSettings)
-            }
-            .sheet(isPresented: $showShareSheet) {
-                ActivityView(activityItems: activityItems)
-            }
-            .onAppear {
-                viewModel.refreshSolarDataForCurrentCity()
-            }
-            // Refresh data when the app becomes active, e.g. after being in background
-            .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
-                 print("App entering foreground, refreshing data...")
-                 viewModel.refreshSolarDataForCurrentCity()
-            }
+            .fontDesign(.rounded)
         }
-        .fontDesign(.rounded) // Apply rounded font design globally
     }
 
     @ViewBuilder
-    private func customTopBar() -> some View {
+    private func NavBar() -> some View {
         HStack(alignment: .center) {
             Button(action: {
                 prepareAndShowShareSheet()
@@ -195,136 +183,6 @@ struct ContentView: View {
     }
 }
 
-struct ErrorView: View {
-    let message: String
-    let retryAction: (() -> Void)?
-
-    var body: some View {
-        ZStack {
-            Color.black.opacity(0.2).edgesIgnoringSafeArea(.all)
-
-            VStack(spacing: 10) {
-                Image(systemName: "exclamationmark.triangle.fill")
-                    .font(.system(size: 30))
-                    .foregroundColor(AppColors.error)
-                Text(message)
-                    .font(.callout)
-                    .foregroundColor(AppColors.secondaryText)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal)
-                if let retryAction = retryAction {
-                    Button(action: retryAction) {
-                        Text("Try Again")
-                            .fontWeight(.semibold)
-                            .padding(.horizontal, 20)
-                            .padding(.vertical, 10)
-                            .background(AppColors.primaryAccent)
-                            .foregroundColor(.white)
-                            .clipShape(Capsule())
-                    }
-                }
-            }
-            .padding()
-            .frame(maxWidth: .infinity)
-            .background(Color(uiColor: .secondarySystemGroupedBackground))
-            .cornerRadius(20)
-            .padding(.horizontal)
-        }
-    }
-}
-
-struct LoadingStateView: View {
-    var body: some View {
-        VStack(spacing: 20) {
-            ProgressView()
-                .scaleEffect(2.0)
-                .progressViewStyle(CircularProgressViewStyle(tint: AppColors.primaryAccent))
-            
-            Text("Fetching Solar Data...")
-                .font(.headline)
-                .foregroundColor(AppColors.secondaryText)
-
-            // Placeholder for SunPathView
-            RoundedRectangle(cornerRadius: 20)
-                .fill(Color(uiColor: .systemGray4))
-                .frame(height: 250)
-                .redacted(reason: .placeholder)
-                .shimmer()
-
-
-            // Placeholder for SolarDataListView
-            VStack(alignment: .leading, spacing: 15) {
-                ForEach(0..<5) { _ in
-                    HStack {
-                        RoundedRectangle(cornerRadius: 5).frame(width: 25, height: 25)
-                        RoundedRectangle(cornerRadius: 5).frame(height: 20)
-                        Spacer()
-                        RoundedRectangle(cornerRadius: 5).frame(width: 80, height: 20)
-                    }
-                }
-            }
-            .padding()
-            .background(Color(uiColor: .secondarySystemGroupedBackground))
-            .cornerRadius(20)
-            .redacted(reason: .placeholder)
-            .shimmer()
-            
-        }
-    }
-}
-
-// Shimmer effect for loading placeholders
-struct ShimmerModifier: ViewModifier {
-    @State private var phase: CGFloat = 0
-    var duration: Double = 1.5
-    var bounce: Bool = false
-
-    func body(content: Content) -> some View {
-        content
-            .modifier(AnimatedMask(phase: phase).animation(
-                Animation.linear(duration: duration)
-                    .repeatForever(autoreverses: bounce)
-            ))
-            .onAppear { phase = 0.8 } // End phase for the shimmer effect
-    }
-
-    struct AnimatedMask: AnimatableModifier {
-        var phase: CGFloat = 0
-
-        var animatableData: CGFloat {
-            get { phase }
-            set { phase = newValue }
-        }
-
-        func body(content: Content) -> some View {
-            content
-                .mask(GradientMask(phase: phase).scaleEffect(3))
-        }
-    }
-
-    struct GradientMask: View {
-        let phase: CGFloat
-        let centerColor = Color.black
-        let edgeColor = Color.black.opacity(0.3)
-
-        var body: some View {
-            LinearGradient(gradient:
-                Gradient(stops: [
-                    .init(color: edgeColor, location: phase),
-                    .init(color: centerColor, location: phase + 0.1),
-                    .init(color: edgeColor, location: phase + 0.2)
-                ]), startPoint: .topLeading, endPoint: .bottomTrailing)
-        }
-    }
-}
-
-extension View {
-    @ViewBuilder
-    func shimmer(duration: Double = 1.5, bounce: Bool = false) -> some View {
-        self.modifier(ShimmerModifier(duration: duration, bounce: bounce))
-    }
-}
-
-#Preview {
-    ContentView().environment(\.managedObjectContext, PersistenceController.preview.container.viewContext)
-}
+//#Preview {
+//    ContentView().environment(\.managedObjectContext, PersistenceController.preview.container.viewContext)
+//}

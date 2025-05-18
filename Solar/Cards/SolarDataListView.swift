@@ -38,21 +38,27 @@ struct SolarDataListView: View {
     @ObservedObject var viewModel: SunViewModel // For formatting time
 
     var body: some View {
+        let isShowingPlaceholder = viewModel.solarInfo.city == SolarInfo.placeholder().city
+
         VStack(alignment: .leading) {
             Text("Today's Solar Forecast")
                 .font(.system(size: 16, weight: .semibold))
                 .foregroundColor(.white)
                 .padding(.top, 5)
-            SolarDataRow(iconName: "sunrise.fill", label: "Sunrise", value: viewModel.formatTime(solarInfo.sunrise))
-            SolarDataRow(iconName: "sunset.fill", label: "Sunset", value: viewModel.formatTime(solarInfo.sunset))
-            SolarDataRow(iconName: "sun.max.fill", label: "Solar Noon", value: viewModel.formatTime(solarInfo.solarNoon))
-            SolarDataRow(iconName: "arrow.up.and.down.circle.fill", label: "Altitude", value: String(format: "%.1f°", solarInfo.currentAltitude))
-            SolarDataRow(iconName: "safari.fill", label: "Azimuth", value: String(format: "%.1f°", solarInfo.currentAzimuth))
-            SolarDataRow(iconName: "sun.max.trianglebadge.exclamationmark.fill",
-                         label: "Daily UV Index",
-                         value: "\(solarInfo.uvIndex) (\(solarInfo.uvIndexCategory))",
-                         valueColor: AppColors.uvColor(for: solarInfo.uvIndexCategory))
-            SolarDataRow(iconName: "hourglass", label: "Daylight Duration", value: solarInfo.daylightDuration)
+            VStack {
+                SolarDataRow(iconName: "sunrise.fill", label: "Sunrise", value: viewModel.formatTime(solarInfo.sunrise))
+                SolarDataRow(iconName: "sunset.fill", label: "Sunset", value: viewModel.formatTime(solarInfo.sunset))
+                SolarDataRow(iconName: "sun.max.fill", label: "Solar Noon", value: viewModel.formatTime(solarInfo.solarNoon))
+                SolarDataRow(iconName: "arrow.up.and.down.circle.fill", label: "Altitude", value: String(format: "%.1f°", solarInfo.currentAltitude))
+                SolarDataRow(iconName: "safari.fill", label: "Azimuth", value: String(format: "%.1f°", solarInfo.currentAzimuth))
+                SolarDataRow(iconName: "sun.max.trianglebadge.exclamationmark.fill",
+                             label: "Daily UV Index",
+                             value: "\(solarInfo.uvIndex) (\(solarInfo.uvIndexCategory))",
+                             valueColor: AppColors.uvColor(for: solarInfo.uvIndexCategory))
+                SolarDataRow(iconName: "hourglass", label: "Daylight Duration", value: solarInfo.daylightDuration)
+            }
+            .redacted(reason: isShowingPlaceholder ? .placeholder : [])
+            .shimmer(active: isShowingPlaceholder, duration: 0.5, bounce: false)
         }
         .padding(.horizontal)
         .padding(.vertical, 10)

@@ -63,7 +63,6 @@ struct SunPathView: View {
                 startPoint: .top,
                 endPoint: .bottom
             )
-            .animation(.easeInOut, value: skyCondition)
             
             SunPathShape(
                 xInsetFactor: pathXInsetFactor,
@@ -71,14 +70,13 @@ struct SunPathView: View {
                 peakHeightFactor: pathPeakHeightFactor
             )
             .stroke(style: StrokeStyle(lineWidth: 2, lineCap: .round))
-            .foregroundColor(.white.opacity(0.8)) // Make path slightly transparent if desired
+            .foregroundColor(.white.opacity(0.8))
             
             GeometryReader { geometry in
                 let pathRect = CGRect(origin: .zero, size: geometry.size)
                 let sunPosition = calculateSunPosition(
                     in: pathRect,
                     progress: progress,
-                    // Pass the same geometric factors to ensure consistency
                     xInsetFactor: pathXInsetFactor,
                     yBaseFactor: pathYBaseFactor,
                     peakHeightFactor: pathPeakHeightFactor
@@ -98,7 +96,7 @@ struct SunPathView: View {
                     .frame(width: 24, height: 24)
                     .shadow(color: .yellow.opacity(0.5), radius: 12, x: 0, y: 3)
                     .position(sunPosition)
-                    .animation(.spring(), value: progress) // Or .easeInOut for smoother non-bouncy
+                    .animation(.easeInOut, value: sunPosition)
             }
         }
         .frame(height: 250)

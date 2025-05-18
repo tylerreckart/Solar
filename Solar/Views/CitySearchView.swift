@@ -34,10 +34,11 @@ struct CitySearchView: View {
     var body: some View {
         NavigationView {
             VStack(spacing: 15) {
-                TextField("Search for a city...", text: $searchText)
+                TextField("", text: $searchText, prompt: Text("Search for a city...").foregroundColor(.gray))
                     .padding()
-                    .background(Color(.systemGray5))
-                    .cornerRadius(10)
+                    .background(AppColors.ui)
+                    .foregroundColor(.white)
+                    .cornerRadius(16)
                     .padding(.horizontal)
                     .onSubmit { // Allow submitting search via keyboard
                         if !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
@@ -78,7 +79,7 @@ struct CitySearchView: View {
                     .frame(maxWidth: .infinity)
                     .background(AppColors.primaryAccent.opacity(0.15))
                     .foregroundColor(AppColors.primaryAccent)
-                    .cornerRadius(10)
+                    .cornerRadius(16)
                 }
                 .padding(.horizontal)
 
@@ -99,81 +100,140 @@ struct CitySearchView: View {
                         .frame(maxWidth: .infinity)
                         .background(Color.green.opacity(0.15))
                         .foregroundColor(.green)
-                        .cornerRadius(10)
+                        .cornerRadius(16)
                     }
                     .padding(.horizontal)
                 }
 
 
-                List {
+                VStack {
                     if isSearchingCities {
                         Section("Suggestions") {
                             ProgressView()
                         }
                     } else if !liveSearchResults.isEmpty {
-                        Section("Suggestions") { // Changed from "Suggestions (Sample)"
-                            ForEach(liveSearchResults, id: \.self) { placemark in // Iterate CLPlacemark
-                                Button(action: {
-                                    handlePlacemarkSelection(placemark)
-                                }) {
-                                    VStack(alignment: .leading) {
-                                        Text(placemark.locality ?? placemark.name ?? "Unknown place")
-                                            .foregroundColor(Color(uiColor: .label))
-                                        if let country = placemark.country {
-                                            Text(country)
-                                                .font(.caption)
-                                                .foregroundColor(.gray)
+                        Section {
+                            VStack {
+                                ForEach(liveSearchResults, id: \.self) { placemark in
+                                    HStack {
+                                        Button(action: {
+                                            handlePlacemarkSelection(placemark)
+                                        }) {
+                                            VStack(alignment: .leading) {
+                                                Text(placemark.locality ?? placemark.name ?? "Unknown place")
+                                                    .font(.system(size: 16, weight: .semibold))
+                                                    .foregroundColor(.white)
+                                                if let country = placemark.country {
+                                                    Text(country)
+                                                        .font(.caption)
+                                                        .foregroundColor(.gray)
+                                                }
+                                            }
                                         }
+                                        
+                                        Spacer()
                                     }
                                 }
                             }
+                            .padding()
+                            .background(AppColors.ui)
+                            .cornerRadius(16)
+                        } header: {
+                            HStack {
+                                Text("Suggestions")
+                                    .font(.system(size: 14, weight: .semibold))
+                                    .foregroundColor(Color(.systemGray))
+                                    .textCase(nil)
+
+                                Spacer()
+                            }
+                            .padding(.horizontal, 10)
+                            .padding(.top)
                         }
+                        .padding(.horizontal)
                     }
                     
-                    Section(header: Text(savedCities.isEmpty && searchText.isEmpty && filteredApiSearchResults.isEmpty ? "No saved cities. Search to add or use current location." : "Saved Cities").font(.caption).foregroundColor(AppColors.secondaryText)) {
+                    Section {
                         if savedCities.isEmpty && searchText.isEmpty && filteredApiSearchResults.isEmpty {
                              // Empty state text is now in the header
                         } else {
-                            ForEach(savedCities) { cityEntity in
-                                HStack {
-                                    VStack(alignment: .leading) {
-                                        Text(cityEntity.name ?? "Unknown City")
-                                            .foregroundColor(Color(uiColor: .label))
-                                        if let date = cityEntity.addedDate {
-                                            Text("Added: \(date, style: .date)")
-                                                .font(.caption2)
-                                                .foregroundColor(AppColors.secondaryText)
+                            VStack {
+                                ForEach(savedCities) { cityEntity in
+                                    VStack {
+                                        HStack {
+                                            VStack(alignment: .leading) {
+                                                Text(cityEntity.name ?? "Unknown City")
+                                                    .font(.system(size: 16, weight: .semibold))
+                                                    .foregroundColor(.white)
+                                                    .padding(.bottom, 2)
+                                                if let date = cityEntity.addedDate {
+                                                    Text("Added: \(date, style: .date)")
+                                                        .font(.caption2)
+                                                        .foregroundColor(AppColors.secondaryText)
+                                                }
+                                            }
+                                            Spacer()
+                                            if viewModel.solarInfo.city.lowercased() == cityEntity.name?.lowercased() {
+                                                Image(systemName: "checkmark.circle.fill")
+                                                    .foregroundColor(AppColors.primaryAccent)
+                                            }
                                         }
-                                    }
-                                    Spacer()
-                                    if viewModel.solarInfo.city.lowercased() == cityEntity.name?.lowercased() {
-                                        Image(systemName: "checkmark.circle.fill")
-                                            .foregroundColor(AppColors.primaryAccent)
-                                    }
-                                }
-                                .contentShape(Rectangle())
-                                .onTapGesture {
-                                    if let cityName = cityEntity.name {
-                                        handleCitySelection(name: cityName, fromApi: false)
+                                        .contentShape(Rectangle())
+                                        .onTapGesture {
+                                            if let cityName = cityEntity.name {
+                                                handleCitySelection(name: cityName, fromApi: false)
+                                            }
+                                        }
+                                        Divider().padding(.vertical, 5)
                                     }
                                 }
+                                .onDelete(perform: deleteSavedCities)
                             }
-                            .onDelete(perform: deleteSavedCities)
+                            .padding()
+                            .background(AppColors.ui)
+                            .cornerRadius(16)
                         }
+                    } header: {
+                        HStack {
+                            Text("Saved Cities")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundColor(Color(.systemGray))
+                                .textCase(nil)
+
+                            Spacer()
+                        }
+                        .padding(.horizontal, 15)
+                        .padding(.top)
                     }
+                    .padding(.horizontal)
                 }
-                .listStyle(InsetGroupedListStyle()) // Modern list style
+                .scrollContentBackground(.hidden)
+                .listStyle(.insetGrouped)
+                .background(.black)
+                
+                Spacer()
             }
-            .navigationTitle("Change Location")
+            .background(.black)
+            .toolbarColorScheme(.dark)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Done") { dismiss() }
                         .foregroundColor(AppColors.primaryAccent)
                 }
+                ToolbarItem(placement: .principal) {
+                    Text("Change Location")
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundColor(.white)
+                }
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Edit") {}
+                        .foregroundColor(AppColors.primaryAccent)
+                }
             }
+            .foregroundColor(.white)
         }
-        .tint(AppColors.primaryAccent) // Sets accent for NavigationView elements like "Done"
+        .tint(AppColors.primaryAccent)
     }
     
     private func performLiveCitySearch(query: String) {
@@ -289,39 +349,35 @@ struct CitySearchView: View {
             print("City is empty or already saved: \(trimmedName)")
             return
         }
-        withAnimation {
-            let newCity = SavedCity(context: viewContext)
-            newCity.id = UUID()
-            newCity.name = name // Already trimmed from caller
-            newCity.addedDate = Date()
-            if let lat = lat, let lon = lon {
-                newCity.latitude = lat
-                newCity.longitude = lon
-            }
-            newCity.timezoneId = timezoneId // Store the timezone identifier
-            // ... save context ...
-            do {
-                try viewContext.save()
-                searchText = ""
-                print("Saved city: \(name) with TZ: \(timezoneId ?? "N/A")")
-            } catch {
-                let nsError = error as NSError
-                print("Error saving new city '\(name)': \(nsError), \(nsError.userInfo)")
-                self.geocodingError = "Could not save city: \(nsError.localizedDescription)"
-            }
+        let newCity = SavedCity(context: viewContext)
+        newCity.id = UUID()
+        newCity.name = name // Already trimmed from caller
+        newCity.addedDate = Date()
+        if let lat = lat, let lon = lon {
+            newCity.latitude = lat
+            newCity.longitude = lon
+        }
+        newCity.timezoneId = timezoneId // Store the timezone identifier
+        // ... save context ...
+        do {
+            try viewContext.save()
+            searchText = ""
+            print("Saved city: \(name) with TZ: \(timezoneId ?? "N/A")")
+        } catch {
+            let nsError = error as NSError
+            print("Error saving new city '\(name)': \(nsError), \(nsError.userInfo)")
+            self.geocodingError = "Could not save city: \(nsError.localizedDescription)"
         }
     }
 
     private func deleteSavedCities(offsets: IndexSet) {
-        withAnimation {
-            offsets.map { savedCities[$0] }.forEach(viewContext.delete)
-            do {
-                try viewContext.save()
-            } catch {
-                let nsError = error as NSError
-                print("Error deleting city: \(nsError), \(nsError.userInfo)")
-                self.geocodingError = "Could not delete city: \(nsError.localizedDescription)"
-            }
+        offsets.map { savedCities[$0] }.forEach(viewContext.delete)
+        do {
+            try viewContext.save()
+        } catch {
+            let nsError = error as NSError
+            print("Error deleting city: \(nsError), \(nsError.userInfo)")
+            self.geocodingError = "Could not delete city: \(nsError.localizedDescription)"
         }
     }
 }
