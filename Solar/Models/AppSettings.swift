@@ -25,8 +25,15 @@ struct DataSectionSettings: Identifiable, Codable, Hashable {
     }
 }
 
-@MainActor
 class AppSettings: ObservableObject {
+    static let shared = AppSettings()
+    
+    @Published var useCurrentLocation: Bool = true
+    @Published var notificationsEnabled: Bool = true
+    @Published var sunriseAlert: Bool = false
+    @Published var sunsetAlert: Bool = false
+    @Published var highUVAlert: Bool = false
+
     @Published var dataSections: [DataSectionSettings] {
         didSet {
             saveDataSectionsToUserDefaults()

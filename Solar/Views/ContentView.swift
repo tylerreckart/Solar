@@ -8,10 +8,79 @@
 import SwiftUI
 import CoreData
 
+struct NavigationBar: View {
+    var city: String
+    var conditions: SkyCondition
+    var showShareSheet: () -> Void
+    @Binding var showingCitySheet: Bool
+    @Binding var showingSettingsView: Bool
+    @Binding var barColor: Color
+
+    var body: some View {
+        HStack(alignment: .center) {
+            Button(action: {
+                showShareSheet()
+            }) {
+                Image(systemName: "square.and.arrow.up")
+                    .font(.system(size: 18, weight: .medium))
+                    .foregroundColor(.white)
+            }
+            
+            Spacer()
+            
+            VStack {
+                HStack(alignment: .center, spacing: 8) {
+                    Text(city)
+                        .font(.system(size: 18, weight: .bold))
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                        .minimumScaleFactor(0.8)
+                }
+            }
+            .padding(.vertical, 8)
+            .padding(.horizontal, 12)
+            .foregroundColor(.white)
+            .onTapGesture {
+                showingCitySheet = true
+            }
+            .shadow(color: Color.black.opacity(0.05), radius: 3, x: 0, y: 2)
+            
+            
+            Spacer()
+            
+            
+            Button(action: {
+                showingSettingsView = true
+            }) {
+                Image(systemName: "ellipsis.circle")
+                    .font(.system(size: 18, weight: .medium))
+                    .foregroundColor(.white)
+            }
+        }
+        .edgesIgnoringSafeArea(.all)
+        .padding(.horizontal)
+        .padding(.top, 10)
+        .padding(.bottom, 5)
+        .background(self.barColor)
+        .onChange(of: conditions) {
+            switch conditions {
+            case .sunrise:
+                self.barColor = AppColors.sunriseGradientStart
+            case .daylight:
+                self.barColor = AppColors.daylightGradientStart
+            case .sunset:
+                self.barColor = AppColors.sunsetGradientStart
+            case .night:
+                self.barColor = AppColors.nightGradientStart
+            }
+        }
+    }
+}
+
 struct ContentView: View {
     @Environment(\.managedObjectContext) private var viewContext
+    @EnvironmentObject var appSettings: AppSettings
     @StateObject private var viewModel = SunViewModel()
-    @StateObject private var appSettings = AppSettings()
     @State private var showingCitySearchSheet = false
     @State private var showingSettingsView = false
     @State private var showShareSheet = false
@@ -22,24 +91,14 @@ struct ContentView: View {
         NavigationView {
             ZStack {
                 VStack(spacing: 0) {
-                    NavBar()
-                        .edgesIgnoringSafeArea(.all)
-                        .padding(.horizontal)
-                        .padding(.top, 10)
-                        .padding(.bottom, 5)
-                        .background(self.barColor)
-                        .onChange(of: viewModel.solarInfo) {
-                            switch viewModel.currentSkyCondition {
-                            case .sunrise:
-                                self.barColor = AppColors.sunriseGradientStart
-                            case .daylight:
-                                self.barColor = AppColors.daylightGradientStart
-                            case .sunset:
-                                self.barColor = AppColors.sunsetGradientStart
-                            case .night:
-                                self.barColor = AppColors.nightGradientStart
-                            }
-                        }
+                    NavigationBar(
+                        city: viewModel.solarInfo.city,
+                        conditions: viewModel.currentSkyCondition,
+                        showShareSheet: prepareAndShowShareSheet,
+                        showingCitySheet: $showingCitySearchSheet,
+                        showingSettingsView: $showingSettingsView,
+                        barColor: $barColor
+                    )
                     
                     ScrollView {
                         VStack(spacing: 0) {

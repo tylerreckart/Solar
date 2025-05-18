@@ -35,11 +35,9 @@ struct SolarDataRow: View {
 
 struct SolarDataListView: View {
     let solarInfo: SolarInfo
-    @ObservedObject var viewModel: SunViewModel // For formatting time
+    @ObservedObject var viewModel: SunViewModel
 
     var body: some View {
-        let isShowingPlaceholder = viewModel.solarInfo.city == SolarInfo.placeholder().city
-
         VStack(alignment: .leading) {
             Text("Today's Solar Forecast")
                 .font(.system(size: 16, weight: .semibold))
@@ -57,8 +55,6 @@ struct SolarDataListView: View {
                              valueColor: AppColors.uvColor(for: solarInfo.uvIndexCategory))
                 SolarDataRow(iconName: "hourglass", label: "Daylight Duration", value: solarInfo.daylightDuration)
             }
-            .redacted(reason: isShowingPlaceholder ? .placeholder : [])
-            .shimmer(active: isShowingPlaceholder, duration: 0.5, bounce: false)
         }
         .padding(.horizontal)
         .padding(.vertical, 10)
