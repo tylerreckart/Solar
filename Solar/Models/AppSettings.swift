@@ -30,9 +30,9 @@ class AppSettings: ObservableObject {
     
     @Published var useCurrentLocation: Bool = true
     @Published var notificationsEnabled: Bool = true
-    @Published var sunriseAlert: Bool = false
-    @Published var sunsetAlert: Bool = false
-    @Published var highUVAlert: Bool = false
+    @Published var sunriseAlert: Bool = true
+    @Published var sunsetAlert: Bool = true
+    @Published var highUVAlert: Bool = true
 
     @Published var dataSections: [DataSectionSettings] {
         didSet {

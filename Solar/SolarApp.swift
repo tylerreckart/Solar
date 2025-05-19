@@ -11,6 +11,16 @@ import SwiftUI
 struct SolarApp: App {
     let persistenceController = PersistenceController.shared
     @StateObject var appSettings = AppSettings.shared
+    
+    init() {
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { granted, error in
+            if granted {
+                print("Notification permission granted.")
+            } else if let error = error {
+                print("Notification permission error: \(error.localizedDescription)")
+            }
+        }
+    }
 
     var body: some Scene {
         WindowGroup {

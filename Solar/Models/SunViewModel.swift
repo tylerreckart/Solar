@@ -18,6 +18,7 @@ class SunViewModel: ObservableObject {
     @Published var isFetchingLocationDetails: Bool = false
     @Published var isGeocodingCity: Bool = false
 
+    private let appSettings = AppSettings.shared
     private let locationManager = LocationManager()
     private let solarAPIService = SolarAPIService()
     private var cancellables = Set<AnyCancellable>()
@@ -105,7 +106,23 @@ class SunViewModel: ObservableObject {
             }
             .store(in: &cancellables)
         
-        // Other bindings remain similar...
+        appSettings.$notificationsEnabled
+            .dropFirst()
+            .sink { [weak self] _ in self?.updateScheduledNotifications() }
+            .store(in: &cancellables)
+        appSettings.$sunriseAlert
+            .dropFirst()
+            .sink { [weak self] _ in self?.updateScheduledNotifications() }
+            .store(in: &cancellables)
+        appSettings.$sunsetAlert
+            .dropFirst()
+            .sink { [weak self] _ in self?.updateScheduledNotifications() }
+            .store(in: &cancellables)
+        appSettings.$highUVAlert
+            .dropFirst()
+            .sink { [weak self] _ in self?.updateScheduledNotifications() }
+            .store(in: &cancellables)
+
         locationManager.$authorizationStatus
             .receive(on: DispatchQueue.main)
             .sink { [weak self] status in
@@ -402,8 +419,7 @@ class SunViewModel: ObservableObject {
             } catch {
                 print("❌ SunViewModel: Failed to fetch AQI data: \(error.localizedDescription)")
             }
-            // --- END AIR QUALITY FETCH ---
-
+            updateScheduledNotifications()
             updateSkyCondition()
             dataLoadingState = .success
             print("✅ SunViewModel: Successfully updated solar data for \(name) (TZ: \(locationTimezoneIdentifier)). Sunrise: \(formatTime(sunriseDate)), Sunset: \(formatTime(sunsetDate))")
@@ -475,6 +491,60 @@ class SunViewModel: ObservableObject {
             else { currentSkyCondition = .daylight }
         }
         print("🌅 SunViewModel: Sky condition updated to: \(currentSkyCondition)")
+    }
+    
+    func updateScheduledNotifications() {
+        NotificationScheduler.shared.cancelAllNotifications() // Clear old notifications first
+        
+        guard appSettings.notificationsEnabled else {
+            print("Notifications are disabled in settings. No new notifications will be scheduled.")
+            return
+        }
+        
+        let city = solarInfo.city
+        
+        // Sunrise Alert
+        if appSettings.sunriseAlert {
+            let sunriseTitle = "Sunrise approaching in \(city)!"
+            let sunriseBody = "Good morning! The sun will rise soon."
+            NotificationScheduler.shared.scheduleNotification(identifier: "sunrise_alert", title: sunriseTitle, body: sunriseBody, date: solarInfo.sunrise)
+        }
+        
+        // Sunset Alert
+        if appSettings.sunsetAlert {
+            let sunsetTitle = "Sunset approaching in \(city)!"
+            let sunsetBody = "Get ready for the beautiful sunset colors."
+            NotificationScheduler.shared.scheduleNotification(identifier: "sunset_alert", title: sunsetTitle, body: sunsetBody, date: solarInfo.sunset)
+        }
+        
+        // High UV Alert
+        if appSettings.highUVAlert {
+            // Find the soonest high UV time (e.g., first hour with UV index >= 6)
+            // For simplicity, this example uses the daily max UV and schedules it for an hour before solar noon if it's high.
+            // A more robust solution would iterate through `solarInfo.hourlyUVData`.
+            
+            let uvThreshold = 6 // Define your "high UV" threshold
+            if solarInfo.uvIndex >= uvThreshold {
+                // Let's schedule it an hour before it's expected to be very high,
+                // or at a peak time if available from hourly data.
+                // This is a simplified example: notifies 1 hour before solar noon if daily max UV is high.
+                if let noonNotificationTime = Calendar.current.date(byAdding: .hour, value: -1, to: solarInfo.solarNoon) {
+                    let highUVTitle = "High UV Alert for \(city)!"
+                    let highUVBody = "UV Index is expected to be high (\(solarInfo.uvIndex)). Protect your skin!"
+                    NotificationScheduler.shared.scheduleUVNotification(identifier: "high_uv_alert", title: highUVTitle, body: highUVBody, date: noonNotificationTime, uvIndex: solarInfo.uvIndex, threshold: uvThreshold)
+                }
+            }
+            // A more advanced implementation for High UV:
+            // Iterate `solarInfo.hourlyUVData`
+            if let firstHighUVHour = solarInfo.hourlyUVData.first(where: { $0.uvIndex >= Double(uvThreshold) && $0.time > Date() }) {
+                let highUVTitle = "High UV Alert for \(city)!"
+                let highUVBody = "UV Index will reach \(Int(firstHighUVHour.uvIndex.rounded())) at \(formatTime(firstHighUVHour.time)). Protect your skin!"
+                // Schedule it slightly before, e.g., 30 minutes
+                if let notificationTime = Calendar.current.date(byAdding: .minute, value: -30, to: firstHighUVHour.time) {
+                    NotificationScheduler.shared.scheduleUVNotification(identifier: "high_uv_alert_\(firstHighUVHour.id)", title: highUVTitle, body: highUVBody, date: notificationTime, uvIndex: Int(firstHighUVHour.uvIndex.rounded()), threshold: uvThreshold)
+                }
+            }
+        }
     }
 
     private func calculateSunAltitude(latitude: Double, date: Date, timezoneIdentifier: String?) -> Double {
