@@ -50,7 +50,18 @@ struct SettingsView: View {
             ScrollView {
                 Section {
                     Toggle(isOn: $appSettings.useCurrentLocation) {
-                        Label("Use Current Location", systemImage: "location.fill")
+                        HStack {
+                            ZStack {
+                                Rectangle().fill(AppColors.uvVeryHigh).frame(width: 32, height: 32).cornerRadius(10)
+                                Image(systemName: "iphone.badge.location")
+                                    .foregroundColor(.white)
+                                    .fontWeight(.semibold)
+                                    .symbolRenderingMode(.hierarchical)
+                                    .padding(.top, 4)
+                            }
+                            Text("Use Current Lcoation")
+                            Spacer()
+                        }
                     }
                     .padding()
                     .background(AppColors.ui)
@@ -68,8 +79,15 @@ struct SettingsView: View {
                             UIApplication.shared.open(url)
                         }
                     } label: {
-                        Label("Location Services Settings", systemImage: "location.circle")
+                        HStack {
+                            Text("Location Services Settings")
+                            Spacer()
+                        }
                     }
+                    .padding()
+                    .background(AppColors.ui)
+                    .cornerRadius(16)
+                    .padding(.top, 10)
                 } header: {
                     HStack {
                         Text("Location")
@@ -97,18 +115,21 @@ struct SettingsView: View {
                             Divider()
                         }
                         
-                        ForEach($appSettings.dataSections, id: \.type) { $sectionSetting in
+                        ForEach(appSettings.dataSections.indices, id: \.self) { index in
+                            let sectionSetting = $appSettings.dataSections[index] // Get the binding for the current item
                             VStack {
                                 HStack {
-                                    Text(sectionSetting.type.rawValue)
+                                    Text(sectionSetting.wrappedValue.type.rawValue) // Access wrappedValue for non-binding properties
                                         .foregroundColor(.white)
-                                        .fontWeight(.semibold)
                                     Spacer()
-                                    Toggle("", isOn: $sectionSetting.isVisible)
+                                    Toggle("", isOn: sectionSetting.isVisible) // Use the binding directly
                                         .labelsHidden()
                                         .tint(AppColors.primaryAccent)
                                 }
-                                Divider()
+                                // Conditionally show the Divider
+                                if index < appSettings.dataSections.count - 1 {
+                                    Divider()
+                                }
                             }
                         }
                         .onMove(perform: appSettings.moveSection)
@@ -133,18 +154,61 @@ struct SettingsView: View {
                 Section {
                     VStack {
                         Toggle(isOn: $appSettings.notificationsEnabled) {
-                            Label("Enable All Notifications", systemImage: "bell.badge")
+                            HStack {
+                                ZStack {
+                                    Rectangle().fill(AppColors.primaryAccent).frame(width: 32, height: 32).cornerRadius(10)
+                                    Image(systemName: "bell.badge")
+                                        .foregroundColor(.white)
+                                        .fontWeight(.semibold)
+                                        .symbolRenderingMode(.hierarchical)
+                                }
+                                Text("Enable All Notifications")
+                                Spacer()
+                            }
                         }
                         
                         if appSettings.notificationsEnabled {
+                            Divider()
                             Toggle(isOn: $appSettings.sunriseAlert) {
-                                Label("Sunrise Alerts", systemImage: "sunrise")
+                                HStack {
+                                    ZStack {
+                                        Rectangle().fill(AppColors.uvModerate).frame(width: 32, height: 32).cornerRadius(10)
+                                        Image(systemName: "sunrise")
+                                            .foregroundColor(.white)
+                                            .fontWeight(.semibold)
+                                            .symbolRenderingMode(.hierarchical)
+                                    }
+                                    Text("Sunrise Alerts")
+                                    Spacer()
+                                }
                             }
+                            Divider()
                             Toggle(isOn: $appSettings.sunsetAlert) {
-                                Label("Sunset Alerts", systemImage: "sunset")
+                                HStack {
+                                    ZStack {
+                                        Rectangle().fill(AppColors.sunsetGradientStart).frame(width: 32, height: 32).cornerRadius(10)
+                                        Image(systemName: "sunset")
+                                            .foregroundColor(.white)
+                                            .fontWeight(.semibold)
+                                            .symbolRenderingMode(.hierarchical)
+                                    }
+                                    Text("Sunset Alerts")
+                                    Spacer()
+                                }
                             }
+                            Divider()
                             Toggle(isOn: $appSettings.highUVAlert) {
-                                Label("High UV Index Alerts", systemImage: "sun.max.trianglebadge.exclamationmark")
+                                HStack {
+                                    ZStack {
+                                        Rectangle().fill(AppColors.uvVeryHigh).frame(width: 32, height: 32).cornerRadius(10)
+                                        Image(systemName: "sun.max.trianglebadge.exclamationmark")
+                                            .foregroundColor(.white)
+                                            .fontWeight(.semibold)
+                                            .symbolRenderingMode(.hierarchical)
+                                    }
+                                    Text("High UV Index Alerts")
+                                    Spacer()
+                                }
                             }
                         }
                     }
@@ -152,12 +216,20 @@ struct SettingsView: View {
                     .background(AppColors.ui)
                     .cornerRadius(16)
                     
-                    // Button to open app-specific notification settings in iOS Settings
                     Button {
-//                        openAppSettingsNotificationSettings()
+                        if let url = URL(string: UIApplication.openNotificationSettingsURLString) {
+                            UIApplication.shared.open(url)
+                        }
                     } label: {
-                        Label("Notification Settings", systemImage: "gearshape")
+                        HStack {
+                            Text("Notification Settings")
+                            Spacer()
+                        }
                     }
+                    .padding()
+                    .background(AppColors.ui)
+                    .cornerRadius(16)
+                    .padding(.top, 10)
                     Text("You can manage detailed notification permissions and sounds in your device's Settings app.")
                         .font(.caption)
                         .foregroundColor(.gray)

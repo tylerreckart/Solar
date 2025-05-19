@@ -33,7 +33,7 @@ struct CitySearchView: View {
 
     var body: some View {
         NavigationView {
-            VStack(spacing: 15) {
+            ScrollView {
                 TextField("", text: $searchText, prompt: Text("Search for a city...").foregroundColor(.gray))
                     .padding()
                     .background(AppColors.ui)
