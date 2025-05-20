@@ -88,77 +88,85 @@ struct ContentView: View {
     @State private var barColor: Color = AppColors.daylightGradientStart
 
     var body: some View {
+        let isLoading = viewModel.solarInfo.city.isEmpty || viewModel.solarInfo.city == "Loading..."
         NavigationView {
-            ZStack {
-                VStack(spacing: 0) {
-                    NavigationBar(
-                        city: viewModel.solarInfo.city,
-                        conditions: viewModel.currentSkyCondition,
-                        showShareSheet: prepareAndShowShareSheet,
-                        showingCitySheet: $showingCitySearchSheet,
-                        showingSettingsView: $showingSettingsView,
-                        barColor: $barColor
-                    )
-                    
-                    ScrollView {
-                        VStack(spacing: 0) {
-                            SolarGreetingView(solarInfo: viewModel.solarInfo, skyCondition: viewModel.currentSkyCondition)
-                                .padding(.top, 40)
-                                .padding(.horizontal)
-                                .frame(maxWidth: .infinity)
-                                .background(self.barColor)
-                            
-                            
-                            SunPathView(progress: viewModel.solarInfo.sunProgress, skyCondition: viewModel.currentSkyCondition)
-                                .id(viewModel.solarInfo.city)
-                            
-                            ZStack {
-                                Color.black.frame(maxHeight: .infinity).edgesIgnoringSafeArea(.all)
-
-                                VStack(spacing: 25) {
-                                    ForEach(appSettings.dataSections.filter { $0.isVisible }.sorted(by: { $0.order < $1.order }), id: \.type) { sectionSetting in
-                                        switch sectionSetting.type {
-                                        case .solarDataList:
-                                            SolarDataListView(solarInfo: viewModel.solarInfo, viewModel: viewModel)
-                                                .padding(.horizontal)
-                                        case .hourlyUVChart:
-                                            if !viewModel.solarInfo.hourlyUVData.isEmpty {
-                                                HourlyUVChartView(
-                                                    hourlyUVData: viewModel.solarInfo.hourlyUVData,
-                                                    timezoneIdentifier: viewModel.solarInfo.timezoneIdentifier
-                                                )
-                                                .padding(.horizontal)
-                                            }
-                                        case .airQuality:
-                                            AirQualityView(solarInfo: viewModel.solarInfo)
-                                                .padding(.horizontal)
-                                        case .solarCountdown:
-                                            SolarCountdownView(solarInfo: viewModel.solarInfo, viewModel: viewModel)
-                                                .padding(.horizontal)
-                                        case .goldenHour:
-                                            GoldenHourView(solarInfo: viewModel.solarInfo, viewModel: viewModel)
-                                                .padding(.horizontal)
-                                        }
-                                    }
+            if isLoading {
+                ProgressView()
+                Text("Fetching solar data...")
+                    .font(.caption)
+                    .foregroundColor(.gray)
+            } else {
+                ZStack {
+                    VStack(spacing: 0) {
+                        NavigationBar(
+                            city: viewModel.solarInfo.city,
+                            conditions: viewModel.currentSkyCondition,
+                            showShareSheet: prepareAndShowShareSheet,
+                            showingCitySheet: $showingCitySearchSheet,
+                            showingSettingsView: $showingSettingsView,
+                            barColor: $barColor
+                        )
+                        
+                        ScrollView {
+                            VStack(spacing: 0) {
+                                SolarGreetingView(solarInfo: viewModel.solarInfo, skyCondition: viewModel.currentSkyCondition)
+                                    .padding(.top, 40)
+                                    .padding(.horizontal)
+                                    .frame(maxWidth: .infinity)
+                                    .background(self.barColor)
+                                
+                                
+                                SunPathView(progress: viewModel.solarInfo.sunProgress, skyCondition: viewModel.currentSkyCondition)
+                                    .id(viewModel.solarInfo.city)
+                                
+                                ZStack {
+                                    Color.black.frame(maxHeight: .infinity).edgesIgnoringSafeArea(.all)
                                     
-                                    Spacer()
+                                    VStack(spacing: 25) {
+                                        ForEach(appSettings.dataSections.filter { $0.isVisible }.sorted(by: { $0.order < $1.order }), id: \.type) { sectionSetting in
+                                            switch sectionSetting.type {
+                                            case .solarDataList:
+                                                SolarDataListView(solarInfo: viewModel.solarInfo, viewModel: viewModel)
+                                                    .padding(.horizontal)
+                                            case .hourlyUVChart:
+                                                if !viewModel.solarInfo.hourlyUVData.isEmpty {
+                                                    HourlyUVChartView(
+                                                        hourlyUVData: viewModel.solarInfo.hourlyUVData,
+                                                        timezoneIdentifier: viewModel.solarInfo.timezoneIdentifier
+                                                    )
+                                                    .padding(.horizontal)
+                                                }
+                                            case .airQuality:
+                                                AirQualityView(solarInfo: viewModel.solarInfo)
+                                                    .padding(.horizontal)
+                                            case .solarCountdown:
+                                                SolarCountdownView(solarInfo: viewModel.solarInfo, viewModel: viewModel)
+                                                    .padding(.horizontal)
+                                            case .goldenHour:
+                                                GoldenHourView(solarInfo: viewModel.solarInfo, viewModel: viewModel)
+                                                    .padding(.horizontal)
+                                            }
+                                        }
+                                        
+                                        Spacer()
+                                    }
+                                    .offset(y: -50)
                                 }
-                                .offset(y: -50)
                             }
                         }
+                        .background(LinearGradient(
+                            gradient: Gradient(stops: [
+                                .init(color: barColor, location: 0.0),
+                                .init(color: barColor, location: 0.5),
+                                .init(color: .black, location: 0.5),
+                                .init(color: .black, location: 1.0)
+                            ]),
+                            startPoint: .top,
+                            endPoint: .bottom
+                        ))
+                        .clipped()
+                        .edgesIgnoringSafeArea(.bottom)
                     }
-                    .background(LinearGradient(
-                        gradient: Gradient(stops: [
-                            .init(color: barColor, location: 0.0),
-                            .init(color: barColor, location: 0.5),
-                            .init(color: .black, location: 0.5),
-                            .init(color: .black, location: 1.0)
-                        ]),
-                        startPoint: .top,
-                        endPoint: .bottom
-                    ))
-                    .clipped()
-                    .edgesIgnoringSafeArea(.bottom)
                 }
                 .navigationBarHidden(true)
                 .onAppear {
@@ -177,7 +185,6 @@ struct ContentView: View {
                     ActivityView(activityItems: activityItems)
                 }
             }
-            .fontDesign(.rounded)
         }
     }
 

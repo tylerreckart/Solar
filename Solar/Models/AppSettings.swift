@@ -14,6 +14,7 @@ struct DataSectionSettings: Identifiable, Codable, Hashable {
     var type: DataSectionType
     var isVisible: Bool
     var order: Int // Determines the display order on the main screen
+    var symbol: String
 
     // Conformance to Hashable for use with .onMove in lists
     func hash(into hasher: inout Hasher) {
@@ -55,7 +56,7 @@ class AppSettings: ObservableObject {
             for type in DataSectionType.allCases {
                 if !existingTypes.contains(type) {
                     maxOrder += 1
-                    currentSections.append(DataSectionSettings(type: type, isVisible: true, order: maxOrder))
+                    currentSections.append(DataSectionSettings(type: type, isVisible: true, order: maxOrder, symbol: ""))
                     existingTypes.insert(type)
                 }
             }
@@ -66,7 +67,7 @@ class AppSettings: ObservableObject {
         } else {
             // Initialize with default settings if nothing is saved or decoding fails
             self.dataSections = DataSectionType.allCases.enumerated().map { index, type in
-                DataSectionSettings(type: type, isVisible: true, order: index)
+                DataSectionSettings(type: type, isVisible: true, order: index, symbol: "")
             }
         }
     }

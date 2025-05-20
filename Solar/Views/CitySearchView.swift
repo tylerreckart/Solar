@@ -1,12 +1,36 @@
-//
-//  CitySearchView.swift
-//  Solar
-//
-//  Created by Tyler Reckart on 5/13/25.
-//
-
+// Solar/Views/CitySearchView.swift
 import SwiftUI
 import CoreLocation
+import Combine
+
+// Helper struct CitySearchResult (no changes)
+struct CitySearchResult: Identifiable, Hashable {
+    let id = UUID()
+    let placemark: CLPlacemark
+
+    var primaryText: String {
+        placemark.locality ?? placemark.name ?? "Unknown Location"
+    }
+
+    var secondaryText: String {
+        var parts: [String] = []
+        if let adminArea = placemark.administrativeArea, adminArea != primaryText {
+            parts.append(adminArea)
+        }
+        if let country = placemark.country {
+            parts.append(country)
+        }
+        return parts.filter { !$0.isEmpty }.joined(separator: ", ")
+    }
+
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(placemark)
+    }
+
+    static func == (lhs: CitySearchResult, rhs: CitySearchResult) -> Bool {
+        lhs.placemark == rhs.placemark
+    }
+}
 
 struct CitySearchView: View {
     @Environment(\.managedObjectContext) private var viewContext
@@ -19,365 +43,335 @@ struct CitySearchView: View {
     private var savedCities: FetchedResults<SavedCity>
 
     @State private var searchText: String = ""
-    // Replace with actual API-based city search results (this is a future enhancement)
-    @State private var cityApiSearchResults: [String] = ["New York", "London", "Tokyo", "Paris", "Berlin"]
-    @State private var geocodingError: String? = nil
-    @State private var liveSearchResults: [CLPlacemark] = []
+    @State private var displayedSearchResults: [CitySearchResult] = []
     @State private var isSearchingCities: Bool = false
-
-
-    var filteredApiSearchResults: [String] {
-        if searchText.isEmpty { return [] } // No API results for empty search
-        return cityApiSearchResults.filter { $0.lowercased().contains(searchText.lowercased()) }
-    }
+    @State private var geocodingError: String? = nil
+    @State private var isInEditMode: Bool = false
+    
+    @State private var searchDebounceTask: DispatchWorkItem?
 
     var body: some View {
         NavigationView {
             ScrollView {
-                TextField("", text: $searchText, prompt: Text("Search for a city...").foregroundColor(.gray))
-                    .padding()
-                    .background(AppColors.ui)
-                    .foregroundColor(.white)
-                    .cornerRadius(16)
-                    .padding(.horizontal)
-                    .onSubmit { // Allow submitting search via keyboard
-                        if !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                             addAndSelectSearchedCity(name: searchText)
-                        }
-                    }
-                    .onChange(of: searchText) { oldValue, newValue in
-                        // Basic debounce: only search if text is not empty and has changed
-                        let trimmedQuery = newValue.trimmingCharacters(in: .whitespacesAndNewlines)
-                        if !trimmedQuery.isEmpty && trimmedQuery.count > 2 { // Start searching after 2 characters
-                            // You might want to add a slight delay (debounce) here in a real app
-                            performLiveCitySearch(query: trimmedQuery)
-                        } else {
-                            liveSearchResults = [] // Clear results if search text is short or empty
-                        }
-                    }
-                
-                if let error = geocodingError {
-                    Text(error)
-                        .font(.caption)
-                        .foregroundColor(AppColors.error)
-                        .padding(.horizontal)
-                }
-
-                Button(action: {
-                    viewModel.requestSolarDataForCurrentLocation()
-                    // Dismissal should ideally happen after successful location fetch or user cancels.
-                    // For now, we dismiss, and the main view will update.
-                    dismiss()
-                }) {
-                    HStack {
-                        Image(systemName: "location.fill")
-                        Text("Use Current Location")
-                        Spacer()
-                        if viewModel.isFetchingLocationDetails { ProgressView().tint(AppColors.primaryAccent) }
-                    }
-                    .padding()
-                    .frame(maxWidth: .infinity)
-                    .background(AppColors.primaryAccent.opacity(0.15))
-                    .foregroundColor(AppColors.primaryAccent)
-                    .cornerRadius(16)
-                }
-                .padding(.horizontal)
-
-                // This button is for directly adding the text if it's not in the (demo) API results
-                // and not already saved.
-                let trimmedSearchText = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
-                if !trimmedSearchText.isEmpty &&
-                   !filteredApiSearchResults.contains(where: { $0.lowercased() == trimmedSearchText.lowercased() }) &&
-                   !savedCities.contains(where: { $0.name?.lowercased() == trimmedSearchText.lowercased() }) {
-                     Button(action: {
-                        addAndSelectSearchedCity(name: trimmedSearchText)
-                    }) {
-                        HStack {
-                            Image(systemName: "plus.circle.fill")
-                            Text("Add and select \"\(trimmedSearchText)\"")
-                        }
-                        .padding()
-                        .frame(maxWidth: .infinity)
-                        .background(Color.green.opacity(0.15))
-                        .foregroundColor(.green)
-                        .cornerRadius(16)
-                    }
-                    .padding(.horizontal)
-                }
-
-
-                VStack {
-                    if isSearchingCities {
-                        Section("Suggestions") {
-                            ProgressView()
-                        }
-                    } else if !liveSearchResults.isEmpty {
-                        Section {
-                            VStack {
-                                ForEach(liveSearchResults, id: \.self) { placemark in
-                                    HStack {
-                                        Button(action: {
-                                            handlePlacemarkSelection(placemark)
-                                        }) {
-                                            VStack(alignment: .leading) {
-                                                Text(placemark.locality ?? placemark.name ?? "Unknown place")
-                                                    .font(.system(size: 16, weight: .semibold))
-                                                    .foregroundColor(.white)
-                                                if let country = placemark.country {
-                                                    Text(country)
-                                                        .font(.caption)
-                                                        .foregroundColor(.gray)
-                                                }
-                                            }
-                                        }
-                                        
-                                        Spacer()
-                                    }
-                                }
-                            }
-                            .padding()
-                            .background(AppColors.ui)
-                            .cornerRadius(16)
-                        } header: {
-                            HStack {
-                                Text("Suggestions")
-                                    .font(.system(size: 14, weight: .semibold))
-                                    .foregroundColor(Color(.systemGray))
-                                    .textCase(nil)
-
-                                Spacer()
-                            }
-                            .padding(.horizontal, 10)
-                            .padding(.top)
-                        }
-                        .padding(.horizontal)
-                    }
-                    
-                    Section {
-                        if savedCities.isEmpty && searchText.isEmpty && filteredApiSearchResults.isEmpty {
-                             // Empty state text is now in the header
-                        } else {
-                            VStack {
-                                ForEach(savedCities) { cityEntity in
-                                    VStack {
-                                        HStack {
-                                            VStack(alignment: .leading) {
-                                                Text(cityEntity.name ?? "Unknown City")
-                                                    .font(.system(size: 16, weight: .semibold))
-                                                    .foregroundColor(.white)
-                                                    .padding(.bottom, 2)
-                                                if let date = cityEntity.addedDate {
-                                                    Text("Added: \(date, style: .date)")
-                                                        .font(.caption2)
-                                                        .foregroundColor(AppColors.secondaryText)
-                                                }
-                                            }
-                                            Spacer()
-                                            if viewModel.solarInfo.city.lowercased() == cityEntity.name?.lowercased() {
-                                                Image(systemName: "checkmark.circle.fill")
-                                                    .foregroundColor(AppColors.primaryAccent)
-                                            }
-                                        }
-                                        .contentShape(Rectangle())
-                                        .onTapGesture {
-                                            if let cityName = cityEntity.name {
-                                                handleCitySelection(name: cityName, fromApi: false)
-                                            }
-                                        }
-                                        Divider().padding(.vertical, 5)
-                                    }
-                                }
-                                .onDelete(perform: deleteSavedCities)
-                            }
-                            .padding()
-                            .background(AppColors.ui)
-                            .cornerRadius(16)
-                        }
-                    } header: {
-                        HStack {
-                            Text("Saved Cities")
-                                .font(.system(size: 14, weight: .semibold))
-                                .foregroundColor(Color(.systemGray))
-                                .textCase(nil)
-
-                            Spacer()
-                        }
-                        .padding(.horizontal, 15)
-                        .padding(.top)
-                    }
-                    .padding(.horizontal)
-                }
-                .scrollContentBackground(.hidden)
-                .listStyle(.insetGrouped)
-                .background(.black)
-                
-                Spacer()
+                searchBar()
+                geocodingErrorView()
+                currentLocationButton()
+                liveSearchResultsSection()
+                savedCitiesSection()
+                Spacer() // Pushes content to top
             }
             .background(.black)
-            .toolbarColorScheme(.dark)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Done") { dismiss() }
-                        .foregroundColor(AppColors.primaryAccent)
+                    Button("Done") {
+                        if isInEditMode { isInEditMode = false }
+                        dismiss()
+                    }.foregroundColor(AppColors.primaryAccent)
                 }
                 ToolbarItem(placement: .principal) {
-                    Text("Change Location")
-                        .font(.system(size: 16, weight: .bold))
-                        .foregroundColor(.white)
-                }
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Edit") {}
-                        .foregroundColor(AppColors.primaryAccent)
+                    Text("Change Location").font(.system(size: 16, weight: .bold)).foregroundColor(.white)
                 }
             }
-            .foregroundColor(.white)
         }
         .tint(AppColors.primaryAccent)
     }
-    
-    private func performLiveCitySearch(query: String) {
-        geocodingError = nil
-        isSearchingCities = true
-        let geocoder = CLGeocoder()
 
-        geocoder.geocodeAddressString(query) { [self] (placemarks, error) in
-            isSearchingCities = false
-            if let error = error {
-                // Avoid showing an error for every keystroke if it's a common "not found yet"
-                if (error as NSError).code == CLError.geocodeFoundNoResult.rawValue || (error as NSError).code == CLError.geocodeFoundPartialResult.rawValue {
-                    // User is likely still typing
-                    self.liveSearchResults = []
-                } else if (error as NSError).code != CLError.geocodeCanceled.rawValue {
-                    self.geocodingError = "Search error: \(error.localizedDescription)"
-                    self.liveSearchResults = []
+    // MARK: - Helper Views / Computed Properties
+
+    @ViewBuilder
+    private func searchBar() -> some View {
+        TextField("Search for a city...", text: $searchText)
+            .padding()
+            .background(AppColors.ui)
+            .foregroundColor(.white)
+            .cornerRadius(16)
+            .padding(.horizontal)
+            .onSubmit {
+                let trimmedQuery = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+                if !trimmedQuery.isEmpty {
+                    searchDebounceTask?.cancel()
+                    performLiveCitySearch(query: trimmedQuery, isSubmit: true)
                 }
-                return
             }
+            .onChange(of: searchText) { oldValue, newValue in
+                geocodingError = nil
+                searchDebounceTask?.cancel()
 
-            guard let placemarks = placemarks else {
-                self.liveSearchResults = []
-                return
+                let task = DispatchWorkItem {
+                    let trimmedQuery = newValue.trimmingCharacters(in: .whitespacesAndNewlines)
+                    if !trimmedQuery.isEmpty && trimmedQuery.count > 1 {
+                        performLiveCitySearch(query: trimmedQuery)
+                    } else {
+                        Task { @MainActor in
+                            self.displayedSearchResults = []
+                            self.isSearchingCities = false
+                        }
+                    }
+                }
+                self.searchDebounceTask = task
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.4, execute: task)
             }
+    }
 
-            // Filter out results without a locality or name to make them more user-friendly
-            self.liveSearchResults = placemarks.filter { $0.locality != nil || $0.name != nil }
+    @ViewBuilder
+    private func geocodingErrorView() -> some View {
+        if let error = geocodingError, !isSearchingCities {
+            Text(error)
+                .font(.caption)
+                .foregroundColor(AppColors.error)
+                .padding(.horizontal)
+                .frame(maxWidth: .infinity, alignment: .center)
+        }
+    }
+
+    @ViewBuilder
+    private func currentLocationButton() -> some View {
+        Button(action: {
+            viewModel.requestSolarDataForCurrentLocation()
+            dismiss()
+        }) {
+            HStack {
+                Image(systemName: "location.fill")
+                Text("Use Current Location")
+                Spacer()
+                if viewModel.isFetchingLocationDetails { ProgressView().tint(AppColors.primaryAccent) }
+            }
+            .padding()
+            .frame(maxWidth: .infinity)
+            .background(AppColors.primaryAccent.opacity(0.15))
+            .foregroundColor(AppColors.primaryAccent)
+            .cornerRadius(16)
+        }
+        .padding(.horizontal)
+        .padding(.top, 5)
+    }
+
+    @ViewBuilder
+    private func liveSearchResultsSection() -> some View {
+        if isSearchingCities {
+            HStack {
+                ProgressView().padding(.trailing, 5)
+                Text("Searching cities...").font(.caption).foregroundColor(.gray)
+            }
+            .padding().frame(maxWidth: .infinity, alignment: .center)
+        } else if !displayedSearchResults.isEmpty {
+            Section {
+                VStack(spacing: 0) {
+                    ForEach(displayedSearchResults) { result in
+                        searchResultRow(for: result)
+                    }
+                }
+                .padding(.horizontal)
+                .background(AppColors.ui)
+                .cornerRadius(16)
+                .padding(.horizontal)
+            } header: {
+                HStack {
+                    Text("Suggestions").font(.system(size: 14, weight: .semibold)).foregroundColor(Color(.systemGray)).textCase(nil)
+                    Spacer()
+                }
+                .padding(.horizontal, 25).padding(.top)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func searchResultRow(for result: CitySearchResult) -> some View {
+        VStack(spacing: 0) {
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(result.primaryText).font(.system(size: 16, weight: .regular)).foregroundColor(.white)
+                    if !result.secondaryText.isEmpty {
+                        Text(result.secondaryText).font(.system(size: 13)).foregroundColor(AppColors.secondaryText)
+                    }
+                }
+                Spacer()
+            }
+            .padding(.vertical, 12).contentShape(Rectangle())
+            .onTapGesture { handlePlacemarkSelection(result) }
+            
+            if result.id != displayedSearchResults.last?.id {
+                Divider().background(Color.gray.opacity(0.2))
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func savedCitiesSection() -> some View {
+        Section {
+            if savedCities.isEmpty && displayedSearchResults.isEmpty && searchText.isEmpty && !isSearchingCities {
+                 Text("Search for a city or use your current location.")
+                    .font(.caption).foregroundColor(.gray).padding().frame(maxWidth: .infinity, alignment: .center)
+            } else if !savedCities.isEmpty {
+                VStack(spacing: 0) {
+                    ForEach(savedCities) { cityEntity in
+                        savedCityRow(for: cityEntity)
+                    }
+                }
+                .animation(.default, value: isInEditMode) // Animate changes within the list due to edit mode
+                .padding(.horizontal)
+                .background(AppColors.ui)
+                .cornerRadius(16)
+                .padding(.horizontal)
+            }
+        } header: {
+            HStack {
+                Text("Saved Cities").font(.system(size: 14, weight: .semibold)).foregroundColor(Color(.systemGray)).textCase(nil)
+                Spacer()
+                if !savedCities.isEmpty {
+                    Button(action: {
+                        withAnimation { isInEditMode.toggle() }
+                    }) {
+                        Text(isInEditMode ? "Done" : "Edit")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(AppColors.primaryAccent)
+                    }
+                }
+            }
+            .padding(.horizontal, 25).padding(.top)
+        }
+    }
+
+    @ViewBuilder
+    private func savedCityRow(for cityEntity: SavedCity) -> some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 15) {
+                if isInEditMode {
+                    Button { deleteSavedCity(cityEntity) } label: {
+                        Image(systemName: "minus.circle.fill").foregroundColor(.red).font(.title2)
+                    }
+                    .padding(.leading, 5)
+                }
+                
+                VStack(alignment: .leading) {
+                    Text(cityEntity.name ?? "Unknown City").font(.system(size: 16, weight: .regular)).foregroundColor(.white).padding(.bottom, 2)
+                    if let date = cityEntity.addedDate {
+                        Text("Added: \(date, style: .date)").font(.caption2).foregroundColor(AppColors.secondaryText)
+                    }
+                }
+                Spacer()
+                if !isInEditMode && viewModel.solarInfo.city.lowercased() == cityEntity.name?.lowercased() {
+                    Image(systemName: "checkmark.circle.fill").foregroundColor(AppColors.primaryAccent)
+                }
+            }
+            .padding(.vertical, 12).contentShape(Rectangle())
+            .onTapGesture {
+                if !isInEditMode {
+                    Task { // Ensure async operations from onTapGesture are in a Task
+                        if let cityName = cityEntity.name {
+                            let lat = cityEntity.latitude as? Double
+                            let lon = cityEntity.longitude as? Double
+                            let tzId = cityEntity.timezoneId
+                            if lat != 0 && lon != 0 {
+                                 viewModel.selectCity(name: cityName, latitude: lat, longitude: lon, timezoneIdentifier: tzId)
+                            } else {
+                                 await viewModel.geocodeAndSelectCity(name: cityName) // Made geocodeAndSelectCity async in ViewModel if it wasn't
+                            }
+                            dismiss()
+                        }
+                    }
+                }
+            }
+            if cityEntity.id != savedCities.last?.id {
+                Divider().background(Color.gray.opacity(0.2))
+                    .padding(.leading, isInEditMode ? 45 : 0)
+            }
         }
     }
     
-    private func handlePlacemarkSelection(_ placemark: CLPlacemark) {
-        guard let location = placemark.location else {
+    // MARK: - Methods (performLiveCitySearch, handlePlacemarkSelection, etc. remain the same)
+
+    private func performLiveCitySearch(query: String, isSubmit: Bool = false) {
+        Task { @MainActor in
+            self.isSearchingCities = true
+            self.geocodingError = nil
+            self.displayedSearchResults = []
+        }
+
+        let geocoder = CLGeocoder()
+        geocoder.geocodeAddressString(query) { placemarks, error in
+            Task { @MainActor in
+                self.isSearchingCities = false
+                if let error = error as? NSError {
+                    if error.domain == NSCocoaErrorDomain && error.code == NSUserCancelledError { return }
+                    if error.code == CLError.geocodeFoundNoResult.rawValue || error.code == CLError.geocodeFoundPartialResult.rawValue {
+                        if isSubmit { self.geocodingError = "No cities found matching \"\(query)\"." }
+                        else { self.geocodingError = nil }
+                    } else if error.code != CLError.network.rawValue && error.code != CLError.geocodeCanceled.rawValue {
+                        self.geocodingError = "Search error: \(error.localizedDescription)"
+                    }
+                    self.displayedSearchResults = []
+                    return
+                }
+
+                guard let validPlacemarks = placemarks else {
+                    self.displayedSearchResults = []
+                    if isSubmit { self.geocodingError = "No cities found matching \"\(query)\"." }
+                    return
+                }
+
+                let mappedResults = validPlacemarks
+                    .compactMap { placemark -> CitySearchResult? in
+                        guard (placemark.locality != nil || placemark.name != nil), placemark.location != nil else { return nil }
+                        return CitySearchResult(placemark: placemark)
+                    }
+                    .reduce(into: [CitySearchResult]()) { (uniqueResults, currentResult) in
+                        if !uniqueResults.contains(where: { $0.primaryText == currentResult.primaryText && $0.secondaryText == currentResult.secondaryText }) {
+                            uniqueResults.append(currentResult)
+                        }
+                    }
+                self.displayedSearchResults = Array(mappedResults.prefix(10))
+                if self.displayedSearchResults.isEmpty && isSubmit {
+                    self.geocodingError = "No cities found matching \"\(query)\"."
+                }
+            }
+        }
+    }
+    
+    private func handlePlacemarkSelection(_ result: CitySearchResult) {
+        guard let location = result.placemark.location else {
             geocodingError = "Could not get coordinates for the selected location."
             return
         }
-
-        let bestName = placemark.locality ?? placemark.name ?? "Selected Location"
-        let clTimezoneIdentifier = placemark.timeZone?.identifier
-
-        // Add to saved cities if not already there (using bestName)
+        let bestName = result.placemark.locality ?? result.placemark.name ?? "Selected Location"
+        let clTimezoneIdentifier = result.placemark.timeZone?.identifier
         if !savedCities.contains(where: { $0.name?.lowercased() == bestName.lowercased() }) {
-            addCityToCoreData(name: bestName,
-                              lat: location.coordinate.latitude,
-                              lon: location.coordinate.longitude,
-                              timezoneId: clTimezoneIdentifier)
+            addCityToCoreData(name: bestName, lat: location.coordinate.latitude, lon: location.coordinate.longitude, timezoneId: clTimezoneIdentifier, placemark: result.placemark)
         }
-
-        // Update ViewModel and dismiss
-        viewModel.selectCity(name: bestName,
-                             latitude: location.coordinate.latitude,
-                             longitude: location.coordinate.longitude,
-                             timezoneIdentifier: clTimezoneIdentifier)
+        viewModel.selectCity(name: bestName, latitude: location.coordinate.latitude, longitude: location.coordinate.longitude, timezoneIdentifier: clTimezoneIdentifier)
         dismiss()
     }
-    
-    
-    private func addAndSelectSearchedCity(name: String) {
-        geocodingError = nil
-        let geocoder = CLGeocoder()
-        viewModel.isGeocodingCity = true
-        geocoder.geocodeAddressString(name) { [self] (placemarks, error) in
-            viewModel.isGeocodingCity = false
-            if let error = error {
-                self.geocodingError = "Error finding '\(name)': \(error.localizedDescription)"
-                return
-            }
-            guard let placemark = placemarks?.first, let location = placemark.location else {
-                self.geocodingError = "Could not find coordinates for '\(name)'."
-                return
-            }
-            
-            let bestName = placemark.locality ?? placemark.name ?? name
-            let clTimezoneIdentifier = placemark.timeZone?.identifier // Get timezone from placemark
-            
-            // Add to saved cities if not already there
-            if !savedCities.contains(where: { $0.name?.lowercased() == bestName.lowercased() }) {
-                addCityToCoreData(name: bestName, lat: location.coordinate.latitude, lon: location.coordinate.longitude, timezoneId: clTimezoneIdentifier)
-            }
-            
-            // Update ViewModel and dismiss
-            viewModel.selectCity(name: bestName, latitude: location.coordinate.latitude, longitude: location.coordinate.longitude, timezoneIdentifier: clTimezoneIdentifier)
-            dismiss()
-        }
-    }
 
-    private func handleCitySelection(name: String, fromApi: Bool) {
-        geocodingError = nil
-        // If from API demo or a new search, we always geocode to get lat/lon
-        // If from saved cities, we assume lat/lon might be stored, but for consistency let's re-geocode
-        // or extend SavedCity to store lat/lon. For now, always geocode.
-        
-        // Check if city is already saved to retrieve its lat/lon if we were storing it
-        if let saved = savedCities.first(where: { $0.name?.lowercased() == name.lowercased() }),
-           let savedLat = saved.latitude as? Double, let savedLon = saved.longitude as? Double,
-           savedLat != 0 && savedLon != 0 {
-            print("Using saved coordinates for \(name)")
-            // Pass the saved timezone identifier if you stored it
-            viewModel.selectCity(name: name, latitude: savedLat, longitude: savedLon, timezoneIdentifier: saved.timezoneId)
-            dismiss()
-        } else {
-            // geocodeAndSelectCity in ViewModel will attempt to get timezone from CLPlacemark
-            // and then from API.
-            viewModel.geocodeAndSelectCity(name: name)
-            dismiss()
-        }
-    }
-
-    private func addCityToCoreData(name: String, lat: Double? = nil, lon: Double? = nil, timezoneId: String? = nil) {
+    private func addCityToCoreData(name: String, lat: Double?, lon: Double?, timezoneId: String?, placemark: CLPlacemark? = nil) {
         let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmedName.isEmpty,
-              !savedCities.contains(where: { $0.name?.lowercased() == trimmedName.lowercased() }) else {
-            print("City is empty or already saved: \(trimmedName)")
-            return
-        }
+        guard !trimmedName.isEmpty, !savedCities.contains(where: { $0.name?.lowercased() == trimmedName.lowercased() }) else { return }
         let newCity = SavedCity(context: viewContext)
-        newCity.id = UUID()
-        newCity.name = name // Already trimmed from caller
-        newCity.addedDate = Date()
-        if let lat = lat, let lon = lon {
-            newCity.latitude = lat
-            newCity.longitude = lon
-        }
-        newCity.timezoneId = timezoneId // Store the timezone identifier
-        // ... save context ...
+        newCity.id = UUID(); newCity.name = trimmedName; newCity.addedDate = Date()
+        if let lat = lat, let lon = lon { newCity.latitude = lat; newCity.longitude = lon }
+        newCity.timezoneId = timezoneId
         do {
-            try viewContext.save()
-            searchText = ""
-            print("Saved city: \(name) with TZ: \(timezoneId ?? "N/A")")
+            try viewContext.save(); searchText = ""
         } catch {
             let nsError = error as NSError
-            print("Error saving new city '\(name)': \(nsError), \(nsError.userInfo)")
-            self.geocodingError = "Could not save city: \(nsError.localizedDescription)"
+            Task { @MainActor in self.geocodingError = "Could not save city: \(nsError.localizedDescription)" }
         }
     }
 
-    private func deleteSavedCities(offsets: IndexSet) {
-        offsets.map { savedCities[$0] }.forEach(viewContext.delete)
-        do {
-            try viewContext.save()
-        } catch {
-            let nsError = error as NSError
-            print("Error deleting city: \(nsError), \(nsError.userInfo)")
-            self.geocodingError = "Could not delete city: \(nsError.localizedDescription)"
+    private func deleteSavedCity(_ city: SavedCity) {
+        withAnimation {
+            viewContext.delete(city)
+            do {
+                try viewContext.save()
+                if savedCities.isEmpty { isInEditMode = false }
+            } catch {
+                let nsError = error as NSError
+                Task { @MainActor in self.geocodingError = "Could not delete city: \(nsError.localizedDescription)" }
+            }
         }
     }
+    
+    // This function can be removed if not used by a swipe-to-delete on a standard List.
+    // For the custom implementation, deleteSavedCity(_ city: SavedCity) is used.
+    // private func deleteSavedCities(offsets: IndexSet) { ... }
 }

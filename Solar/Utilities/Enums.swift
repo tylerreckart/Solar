@@ -5,6 +5,7 @@
 //  Created by Tyler Reckart on 5/13/25.
 //
 
+import SwiftUI
 import Foundation
 
 enum SkyCondition {
@@ -36,4 +37,34 @@ enum DataSectionType: String, CaseIterable, Codable, Identifiable {
     case goldenHour = "Golden Hour" 
 
     var id: String { self.rawValue }
+    
+    var defaultSymbol: String {
+        switch self {
+        case .solarDataList:
+            return "sun.max"
+        case .hourlyUVChart:
+            return "chart.bar.xaxis"
+        case .airQuality:
+            return "wind"
+        case .solarCountdown:
+            return "timer"
+        case .goldenHour:
+            return "sun.horizon"
+        }
+    }
+    
+    var defaultColor: Color {
+        switch self {
+        case .solarDataList:
+            return AppColors.uvModerate
+        case .hourlyUVChart:
+            return AppColors.sunsetGradientStart
+        case .airQuality:
+            return AppColors.uvLow
+        case .solarCountdown:
+            return AppColors.primaryAccent
+        case .goldenHour:
+            return AppColors.uvModerate
+        }
+    }
 }

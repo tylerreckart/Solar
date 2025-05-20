@@ -96,7 +96,6 @@ struct SunPathView: View {
                     .frame(width: 24, height: 24)
                     .shadow(color: .yellow.opacity(0.5), radius: 12, x: 0, y: 3)
                     .position(sunPosition)
-                    .animation(.easeInOut, value: sunPosition)
             }
         }
         .frame(height: 250)

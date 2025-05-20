@@ -119,7 +119,14 @@ struct SettingsView: View {
                             let sectionSetting = $appSettings.dataSections[index] // Get the binding for the current item
                             VStack {
                                 HStack {
-                                    Text(sectionSetting.wrappedValue.type.rawValue) // Access wrappedValue for non-binding properties
+                                    ZStack {
+                                        Rectangle().fill(sectionSetting.wrappedValue.type.defaultColor).frame(width: 32, height: 32).cornerRadius(10)
+                                        Image(systemName: sectionSetting.wrappedValue.type.defaultSymbol)
+                                            .foregroundColor(.white)
+                                            .fontWeight(.semibold)
+                                            .symbolRenderingMode(.hierarchical)
+                                    }
+                                    Text(sectionSetting.wrappedValue.type.rawValue)
                                         .foregroundColor(.white)
                                     Spacer()
                                     Toggle("", isOn: sectionSetting.isVisible) // Use the binding directly
@@ -250,20 +257,60 @@ struct SettingsView: View {
                 Section {
                     VStack(alignment: .leading) {
                         HStack {
+                            NavigationLink(destination: {
+                                AboutView()
+                            }) {
+                                HStack {
+                                    ZStack {
+                                        Rectangle().fill(AppColors.uvVeryHigh).frame(width: 32, height: 32).cornerRadius(10)
+                                        Image(systemName: "info.circle.fill")
+                                            .foregroundColor(.white)
+                                            .fontWeight(.semibold)
+                                            .symbolRenderingMode(.hierarchical)
+                                    }
+                                    Text("About")
+                                        .foregroundColor(.white)
+                                    Spacer()
+                                }
+                            }
+                        }
+                        Divider()
+                        HStack {
+                            ZStack {
+                                Rectangle().fill(AppColors.uvHigh).frame(width: 32, height: 32).cornerRadius(10)
+                                Image(systemName: "richtext.page.fill")
+                                    .foregroundColor(.white)
+                                    .fontWeight(.semibold)
+                                    .symbolRenderingMode(.hierarchical)
+                            }
                             Link("Terms of Service", destination: URL(string: "https://www.haptic.software/terms.html")!)
-                                .foregroundColor(AppColors.primaryAccent)
+                                .foregroundColor(.white)
                             Spacer()
                         }
                         Divider()
                         HStack {
+                            ZStack {
+                                Rectangle().fill(AppColors.uvModerate).frame(width: 32, height: 32).cornerRadius(10)
+                                Image(systemName: "text.rectangle.page.fill")
+                                    .foregroundColor(.white)
+                                    .fontWeight(.semibold)
+                                    .symbolRenderingMode(.hierarchical)
+                            }
                             Link("Privacy Policy", destination: URL(string: "https://www.haptic.software/privacy.html")!)
-                                .foregroundColor(AppColors.primaryAccent)
+                                .foregroundColor(.white)
                             Spacer()
                         }
                         Divider()
                         HStack {
-                            Link("API Usage & Acknowledgements", destination: URL(string: "https://open-meteo.com")!) // Link to Open-Meteo as an example
-                                .foregroundColor(AppColors.primaryAccent)
+                            ZStack {
+                                Rectangle().fill(AppColors.uvLow).frame(width: 32, height: 32).cornerRadius(10)
+                                Image(systemName: "wifi")
+                                    .foregroundColor(.white)
+                                    .fontWeight(.semibold)
+                                    .symbolRenderingMode(.hierarchical)
+                            }
+                            Link("APIs Used", destination: URL(string: "https://open-meteo.com")!)
+                                .foregroundColor(.white)
                             Spacer()
                         }
                     }
@@ -273,7 +320,7 @@ struct SettingsView: View {
                     .padding(.bottom, 100)
                 } header: {
                     HStack {
-                        Text("Legal")
+                        Text("About & Legal")
                             .font(.system(size: 14, weight: .semibold))
                             .foregroundColor(Color(.systemGray))
                             .textCase(nil)
