@@ -22,7 +22,8 @@ class NotificationScheduler {
 
         // Ensure the date is in the future
         guard date > Date() else {
-            print("Attempted to schedule notification for a past date: \(identifier)")
+            // Enhanced logging for skipped past-date notifications
+            print("🗓️ Notification \(identifier) skipped: Schedule date \(date) is in the past. Current time: \(Date()).")
             return
         }
 
@@ -42,12 +43,12 @@ class NotificationScheduler {
 
     func scheduleUVNotification(identifier: String, title: String, body: String, date: Date, uvIndex: Int, threshold: Int = 6) {
         // Only schedule if UV index is high and date is in future
-        guard uvIndex >= threshold, date > Date() else {
-            if uvIndex < threshold {
-                print("UV Index (\(uvIndex)) not high enough for notification: \(identifier)")
-            } else {
-                print("Attempted to schedule UV notification for a past date: \(identifier)")
-            }
+        guard uvIndex >= threshold else {
+            print("☀️ UV Notification \(identifier) skipped: UV Index (\(uvIndex)) not >= threshold (\(threshold)).")
+            return
+        }
+        guard date > Date() else {
+            print("🗓️ UV Notification \(identifier) skipped: Schedule date \(date) is in the past. Current time: \(Date()).")
             return
         }
         scheduleNotification(identifier: identifier, title: title, body: body, date: date)
@@ -62,5 +63,14 @@ class NotificationScheduler {
     func cancelAllNotifications() {
         UNUserNotificationCenter.current().removeAllPendingNotificationRequests()
         print("Cancelled all pending notifications.")
+    }
+    
+    // Helper to check current notification authorization status
+    func getNotificationAuthorizationStatus(completion: @escaping (UNAuthorizationStatus) -> Void) {
+        UNUserNotificationCenter.current().getNotificationSettings { settings in
+            DispatchQueue.main.async {
+                completion(settings.authorizationStatus)
+            }
+        }
     }
 }

@@ -6,21 +6,24 @@
 //
 
 import SwiftUI
+import UserNotifications
+import MessageUI
 
+// FeedbackHelper to generate mail details
 struct FeedbackHelper {
-    static func getFeedbackEmailUrl() -> URL? {
+    static func getMailComposeDetails() -> (recipient: String, subject: String, body: String)? {
         let appVersionString = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "N/A"
         let appBuildString = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "N/A"
         let iosVersion = UIDevice.current.systemVersion
         let deviceModel = UIDevice.current.model
         
-        let recipientEmail = "support@haptic.software"
+        let recipientEmail = "support@haptic.software" // Your support email
         let subject = "Solar App Feedback (v\(appVersionString))"
         let body = """
         Please provide your feedback, bug reports, or feature requests below.
         
         ----------------------------------
-        App Version: \(appVersionString) (\(appBuildString))
+        App Version: \(appVersionString) (Build \(appBuildString))
         iOS Version: \(iosVersion)
         Device: \(deviceModel)
         ----------------------------------
@@ -28,38 +31,88 @@ struct FeedbackHelper {
         My Feedback:
         
         """
-        
-        var components = URLComponents()
-        components.scheme = "mailto"
-        components.path = recipientEmail
-        components.queryItems = [
-            URLQueryItem(name: "subject", value: subject.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)),
-            URLQueryItem(name: "body", value: body.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed))
-        ]
-        
-        return components.url
+        return (recipientEmail, subject, body)
     }
 }
 
+// UIViewControllerRepresentable for MFMailComposeViewController
+struct MailComposeView: UIViewControllerRepresentable {
+    @Environment(\.dismiss) var dismiss // To dismiss the sheet
+
+    // Static details to avoid re-computation if not needed
+    static var mailDetails = FeedbackHelper.getMailComposeDetails()
+
+    class Coordinator: NSObject, MFMailComposeViewControllerDelegate {
+        @Binding var isPresented: Bool // To control the presentation from the parent
+
+        init(isPresented: Binding<Bool>) {
+            _isPresented = isPresented
+        }
+
+        func mailComposeController(_ controller: MFMailComposeViewController,
+                                   didFinishWith result: MFMailComposeResult,
+                                   error: Error?) {
+            // Dismiss the mail compose view controller
+            // The isPresented binding will handle dismissing the SwiftUI sheet
+            isPresented = false
+            
+            if let error = error {
+                print("Mail compose error: \(error.localizedDescription)")
+            } else {
+                print("Mail compose finished with result: \(result.rawValue)")
+            }
+        }
+    }
+
+    @Binding var isPresented: Bool // Binding to control the sheet presentation
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(isPresented: $isPresented)
+    }
+
+    func makeUIViewController(context: Context) -> MFMailComposeViewController {
+        let mc = MFMailComposeViewController()
+        mc.mailComposeDelegate = context.coordinator
+        if let details = MailComposeView.mailDetails {
+            mc.setToRecipients([details.recipient])
+            mc.setSubject(details.subject)
+            mc.setMessageBody(details.body, isHTML: false)
+        }
+        return mc
+    }
+
+    func updateUIViewController(_ uiViewController: MFMailComposeViewController, context: Context) {
+        // No update needed
+    }
+}
+
+
 struct SettingsView: View {
     @ObservedObject var appSettings: AppSettings
-    @Environment(\.dismiss) var dismiss
+    @Environment(\.dismiss) var dismissView // Renamed to avoid conflict
+    @State private var actualNotificationStatus: UNAuthorizationStatus = .notDetermined
+    
+    // States for in-app mail composer
+    @State private var showingMailComposeSheet = false // Controls the .sheet presentation
+    @State private var mailAlertMessage: String? = nil
+    @State private var showMailUnavailableAlert = false
+
 
     var body: some View {
         NavigationView {
             ScrollView {
+                // --- LOCATION SECTION ---
                 Section {
                     Toggle(isOn: $appSettings.useCurrentLocation) {
                         HStack {
                             ZStack {
                                 Rectangle().fill(AppColors.uvVeryHigh).frame(width: 32, height: 32).cornerRadius(10)
-                                Image(systemName: "iphone.badge.location")
+                                Image(systemName: "location.fill")
                                     .foregroundColor(.white)
                                     .fontWeight(.semibold)
                                     .symbolRenderingMode(.hierarchical)
-                                    .padding(.top, 4)
                             }
-                            Text("Use Current Lcoation")
+                            Text("Use Current Location")
                             Spacer()
                         }
                     }
@@ -71,9 +124,9 @@ struct SettingsView: View {
                         Text("The app will use the last manually searched location. To set a new default, please perform a new city search from the main screen.")
                             .font(.caption)
                             .foregroundColor(.gray)
+                            .padding(.horizontal)
                     }
                     
-                    // Button to open Location Services settings in iOS Settings
                     Button {
                         if let url = URL(string: UIApplication.openSettingsURLString) {
                             UIApplication.shared.open(url)
@@ -82,6 +135,8 @@ struct SettingsView: View {
                         HStack {
                             Text("Location Services Settings")
                             Spacer()
+                            Image(systemName: "arrow.up.forward.app")
+                                .foregroundColor(.gray)
                         }
                     }
                     .padding()
@@ -94,54 +149,54 @@ struct SettingsView: View {
                             .font(.system(size: 14, weight: .semibold))
                             .foregroundColor(Color(.systemGray))
                             .textCase(nil)
-
                         Spacer()
                     }
-                    .padding(.horizontal, 15)
+                    .padding(.horizontal, 25)
                     .padding(.top)
                 }
                 .padding(.horizontal)
                 
+                // --- CUSTOMIZATION SECTION ---
                 Section {
-                    VStack {
-                        VStack {
-                            HStack {
-                                Text("Enable or disable data sections on the main screen.")
-                                    .font(.caption)
-                                    .foregroundColor(.gray)
-                                    .padding(.bottom, 5)
-                                Spacer()
-                            }
-                            Divider()
+                    VStack(alignment: .leading, spacing: 0) {
+                        HStack {
+                            Text("Enable or disable data sections on the main screen.")
+                                .font(.caption)
+                                .foregroundColor(.gray)
+                                .padding(.bottom, 5)
+                            Spacer()
                         }
-                        
+                        .padding([.top, .horizontal])
+
                         ForEach(appSettings.dataSections.indices, id: \.self) { index in
-                            let sectionSetting = $appSettings.dataSections[index] // Get the binding for the current item
-                            VStack {
-                                HStack {
-                                    ZStack {
-                                        Rectangle().fill(sectionSetting.wrappedValue.type.defaultColor).frame(width: 32, height: 32).cornerRadius(10)
-                                        Image(systemName: sectionSetting.wrappedValue.type.defaultSymbol)
-                                            .foregroundColor(.white)
-                                            .fontWeight(.semibold)
-                                            .symbolRenderingMode(.hierarchical)
-                                    }
-                                    Text(sectionSetting.wrappedValue.type.rawValue)
+                            let sectionSetting = $appSettings.dataSections[index]
+                            
+                            HStack {
+                                ZStack {
+                                    Rectangle().fill(sectionSetting.wrappedValue.type.defaultColor).frame(width: 32, height: 32).cornerRadius(10)
+                                    Image(systemName: sectionSetting.wrappedValue.type.defaultSymbol)
                                         .foregroundColor(.white)
-                                    Spacer()
-                                    Toggle("", isOn: sectionSetting.isVisible) // Use the binding directly
-                                        .labelsHidden()
-                                        .tint(AppColors.primaryAccent)
+                                        .fontWeight(.semibold)
+                                        .symbolRenderingMode(.hierarchical)
                                 }
-                                // Conditionally show the Divider
-                                if index < appSettings.dataSections.count - 1 {
-                                    Divider()
-                                }
+                                Text(sectionSetting.wrappedValue.type.rawValue)
+                                    .foregroundColor(.white)
+                                Spacer()
+                                Toggle("", isOn: sectionSetting.isVisible)
+                                    .labelsHidden()
+                                    .tint(AppColors.primaryAccent)
+                            }
+                            .padding()
+
+                            if index < appSettings.dataSections.count - 1 {
+                                Divider()
+                                    .background(Color.gray.opacity(0.2))
+                                    .padding(.leading)
                             }
                         }
                         .onMove(perform: appSettings.moveSection)
+                        
                     }
-                    .padding()
                     .background(AppColors.ui)
                     .cornerRadius(16)
                 } header: {
@@ -150,16 +205,16 @@ struct SettingsView: View {
                             .font(.system(size: 14, weight: .semibold))
                             .foregroundColor(Color(.systemGray))
                             .textCase(nil)
-
                         Spacer()
                     }
-                    .padding(.horizontal, 15)
+                    .padding(.horizontal, 25)
                     .padding(.top)
                 }
                 .padding(.horizontal)
                 
+                // --- NOTIFICATIONS SECTION ---
                 Section {
-                    VStack {
+                    VStack(alignment: .leading) {
                         Toggle(isOn: $appSettings.notificationsEnabled) {
                             HStack {
                                 ZStack {
@@ -173,9 +228,17 @@ struct SettingsView: View {
                                 Spacer()
                             }
                         }
+                        .disabled(actualNotificationStatus == .denied)
+
+                        if appSettings.notificationsEnabled && actualNotificationStatus == .denied {
+                            Text("Notifications are disabled in your iPhone's Settings for Solar. Please enable them there to receive alerts.")
+                                .font(.caption)
+                                .foregroundColor(.orange)
+                                .padding(.top, 5)
+                        }
                         
-                        if appSettings.notificationsEnabled {
-                            Divider()
+                        if appSettings.notificationsEnabled && actualNotificationStatus != .denied {
+                            Divider().padding(.vertical, 5)
                             Toggle(isOn: $appSettings.sunriseAlert) {
                                 HStack {
                                     ZStack {
@@ -189,7 +252,7 @@ struct SettingsView: View {
                                     Spacer()
                                 }
                             }
-                            Divider()
+                            Divider().padding(.vertical, 5)
                             Toggle(isOn: $appSettings.sunsetAlert) {
                                 HStack {
                                     ZStack {
@@ -203,7 +266,7 @@ struct SettingsView: View {
                                     Spacer()
                                 }
                             }
-                            Divider()
+                            Divider().padding(.vertical, 5)
                             Toggle(isOn: $appSettings.highUVAlert) {
                                 HStack {
                                     ZStack {
@@ -229,89 +292,144 @@ struct SettingsView: View {
                         }
                     } label: {
                         HStack {
-                            Text("Notification Settings")
+                            Text("Notification System Settings")
                             Spacer()
+                            Image(systemName: "arrow.up.forward.app")
+                                .foregroundColor(.gray)
                         }
                     }
                     .padding()
                     .background(AppColors.ui)
                     .cornerRadius(16)
                     .padding(.top, 10)
+
                     Text("You can manage detailed notification permissions and sounds in your device's Settings app.")
                         .font(.caption)
                         .foregroundColor(.gray)
+                        .padding(.horizontal)
                 } header: {
                     HStack {
                         Text("Notifications")
                             .font(.system(size: 14, weight: .semibold))
                             .foregroundColor(Color(.systemGray))
                             .textCase(nil)
-
                         Spacer()
                     }
-                    .padding(.horizontal, 15)
+                    .padding(.horizontal, 25)
                     .padding(.top)
                 }
                 .padding(.horizontal)
+                .onAppear {
+                    NotificationScheduler.shared.getNotificationAuthorizationStatus { status in
+                        self.actualNotificationStatus = status
+                    }
+                }
 
+                // --- ABOUT & LEGAL SECTION ---
                 Section {
                     VStack(alignment: .leading) {
-                        HStack {
-                            NavigationLink(destination: {
-                                AboutView()
-                            }) {
-                                HStack {
-                                    ZStack {
-                                        Rectangle().fill(AppColors.uvVeryHigh).frame(width: 32, height: 32).cornerRadius(10)
-                                        Image(systemName: "info.circle.fill")
-                                            .foregroundColor(.white)
-                                            .fontWeight(.semibold)
-                                            .symbolRenderingMode(.hierarchical)
-                                    }
-                                    Text("About")
+                        NavigationLink(destination: AboutView()) {
+                            HStack {
+                                ZStack {
+                                    Rectangle().fill(AppColors.uvVeryHigh).frame(width: 32, height: 32).cornerRadius(10)
+                                    Image(systemName: "info.circle.fill")
                                         .foregroundColor(.white)
-                                    Spacer()
+                                        .fontWeight(.semibold)
+                                        .symbolRenderingMode(.hierarchical)
                                 }
+                                Text("About Solar")
+                                    .foregroundColor(.white)
+                                Spacer()
+                                Image(systemName: "chevron.forward.square").foregroundColor(.gray)
                             }
                         }
-                        Divider()
-                        HStack {
-                            ZStack {
-                                Rectangle().fill(AppColors.uvHigh).frame(width: 32, height: 32).cornerRadius(10)
-                                Image(systemName: "richtext.page.fill")
-                                    .foregroundColor(.white)
-                                    .fontWeight(.semibold)
-                                    .symbolRenderingMode(.hierarchical)
+                        Divider().padding(.vertical, 5)
+
+                        // Updated Send Feedback Button
+                        Button(action: {
+                            if MFMailComposeViewController.canSendMail() {
+                                self.showingMailComposeSheet = true // Trigger the sheet
+                            } else {
+                                self.mailAlertMessage = "Your device is not configured to send email. Please set up an email account in the Mail app."
+                                self.showMailUnavailableAlert = true
+                                print("Cannot send mail: Mail services are not available.")
                             }
-                            Link("Terms of Service", destination: URL(string: "https://www.haptic.software/terms.html")!)
-                                .foregroundColor(.white)
-                            Spacer()
+                        }) {
+                            HStack {
+                                ZStack {
+                                    Rectangle().fill(AppColors.daylightGradientStart).frame(width: 32, height: 32).cornerRadius(10)
+                                    Image(systemName: "envelope.fill")
+                                        .foregroundColor(.white)
+                                        .fontWeight(.semibold)
+                                        .symbolRenderingMode(.hierarchical)
+                                }
+                                Text("Send Feedback")
+                                    .foregroundColor(.white)
+                                Spacer()
+                                Image(systemName: "chevron.forward.square").foregroundColor(.gray) // Indicate action
+                            }
                         }
-                        Divider()
-                        HStack {
-                            ZStack {
-                                Rectangle().fill(AppColors.uvModerate).frame(width: 32, height: 32).cornerRadius(10)
-                                Image(systemName: "text.rectangle.page.fill")
-                                    .foregroundColor(.white)
-                                    .fontWeight(.semibold)
-                                    .symbolRenderingMode(.hierarchical)
-                            }
-                            Link("Privacy Policy", destination: URL(string: "https://www.haptic.software/privacy.html")!)
-                                .foregroundColor(.white)
-                            Spacer()
+                        .sheet(isPresented: $showingMailComposeSheet) {
+                            // Pass the binding to MailComposeView
+                            MailComposeView(isPresented: $showingMailComposeSheet)
+                                .ignoresSafeArea() // Allow mail composer to use full screen
                         }
-                        Divider()
-                        HStack {
-                            ZStack {
-                                Rectangle().fill(AppColors.uvLow).frame(width: 32, height: 32).cornerRadius(10)
-                                Image(systemName: "wifi")
+                        .alert("Mail Unavailable", isPresented: $showMailUnavailableAlert) { // Changed alert title
+                            Button("OK") { }
+                        } message: {
+                            Text(mailAlertMessage ?? "Please ensure your device is configured to send email.")
+                        }
+
+
+                        Divider().padding(.vertical, 5)
+                        
+                        Link(destination: URL(string: "https://www.haptic.software/terms.html")!) {
+                             HStack {
+                                ZStack {
+                                    Rectangle().fill(AppColors.uvHigh).frame(width: 32, height: 32).cornerRadius(10)
+                                    Image(systemName: "doc.text.fill")
+                                        .foregroundColor(.white)
+                                        .fontWeight(.semibold)
+                                        .symbolRenderingMode(.hierarchical)
+                                }
+                                Text("Terms of Service")
                                     .foregroundColor(.white)
-                                    .fontWeight(.semibold)
-                                    .symbolRenderingMode(.hierarchical)
+                                Spacer()
+                                Image(systemName: "arrow.up.forward.app").foregroundColor(.gray)
                             }
-                            Link("APIs Used", destination: URL(string: "https://open-meteo.com")!)
-                                .foregroundColor(.white)
-                            Spacer()
+                        }
+                        Divider().padding(.vertical, 5)
+                        
+                         Link(destination: URL(string: "https://www.haptic.software/privacy.html")!) {
+                            HStack {
+                                ZStack {
+                                    Rectangle().fill(AppColors.uvModerate).frame(width: 32, height: 32).cornerRadius(10)
+                                    Image(systemName: "lock.doc.fill")
+                                        .foregroundColor(.white)
+                                        .fontWeight(.semibold)
+                                }
+                                Text("Privacy Policy")
+                                    .foregroundColor(.white)
+                                Spacer()
+                                Image(systemName: "arrow.up.forward.app").foregroundColor(.gray)
+                            }
+                        }
+                        Divider().padding(.vertical, 5)
+                        
+                        Link(destination: URL(string: "https://open-meteo.com")!) {
+                            HStack {
+                                ZStack {
+                                    Rectangle().fill(AppColors.uvLow).frame(width: 32, height: 32).cornerRadius(10)
+                                    Image(systemName: "cloud.sun.fill")
+                                        .foregroundColor(.white)
+                                        .fontWeight(.semibold)
+                                        .symbolRenderingMode(.hierarchical)
+                                }
+                                Text("API Usage Acknowledgement")
+                                    .foregroundColor(.white)
+                                Spacer()
+                                Image(systemName: "arrow.up.forward.app").foregroundColor(.gray)
+                            }
                         }
                     }
                     .padding()
@@ -324,25 +442,21 @@ struct SettingsView: View {
                             .font(.system(size: 14, weight: .semibold))
                             .foregroundColor(Color(.systemGray))
                             .textCase(nil)
-
                         Spacer()
                     }
-                    .padding(.horizontal, 15)
+                    .padding(.horizontal, 25)
                     .padding(.top)
                 }
                 .padding(.horizontal)
+
             }
-            .padding(.top, 50)
-            .edgesIgnoringSafeArea(.all)
-            .scrollContentBackground(.hidden)
-            .listStyle(.insetGrouped)
+            .padding(.top, 1)
             .background(.black)
-            .listStyle(InsetGroupedListStyle())
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Done") {
-                        dismiss()
+                        dismissView() // Use the renamed dismiss action
                     }
                     .foregroundColor(AppColors.primaryAccent)
                 }
@@ -357,10 +471,9 @@ struct SettingsView: View {
     }
 }
 
-// Optional: Preview Provider for SettingsView
 struct SettingsView_Previews: PreviewProvider {
     static var previews: some View {
-        // Create a mock AppSettings for previewing
-        SettingsView(appSettings: AppSettings())
+        SettingsView(appSettings: AppSettings.shared)
+            .preferredColorScheme(.dark)
     }
 }
