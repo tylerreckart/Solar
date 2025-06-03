@@ -12,10 +12,14 @@ import UserNotifications // Import UserNotifications
 struct SolarApp: App {
     let persistenceController = PersistenceController.shared
     @StateObject var appSettings = AppSettings.shared
+    private let reviewManager = ReviewManager.shared
+    @Environment(\.scenePhase) var scenePhase
     
     init() {
         // Initial request for notification permission
         requestNotificationPermissionAndUpdateSettings()
+        // Track app actions
+        reviewManager.incrementAppLaunchCount()
     }
 
     var body: some Scene {
@@ -30,6 +34,16 @@ struct SolarApp: App {
                     print("App entered foreground, checking notification permissions.")
                     requestNotificationPermissionAndUpdateSettings()
                 }
+        }
+        .onChange(of: scenePhase) { oldPhase, newPhase in
+            if newPhase == .active {
+                // App became active, consider prompting for review after a slight delay
+                // This ensures the UI is settled.
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { // 2-second delay
+                    print("🚀 ReviewManager: App became active, checking for review prompt (time/launch based).")
+                    reviewManager.requestReviewOnAppActive()
+                }
+            }
         }
     }
 

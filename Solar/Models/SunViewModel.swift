@@ -15,6 +15,7 @@ class SunViewModel: ObservableObject {
     @Published var isGeocodingCity: Bool = false
 
     private let appSettings = AppSettings.shared
+    private let reviewManager = ReviewManager.shared
     private let locationManager = LocationManager()
     private let solarAPIService = SolarAPIService()
     private var cancellables = Set<AnyCancellable>()
@@ -401,6 +402,7 @@ class SunViewModel: ObservableObject {
             
             updateSkyCondition() // Update sky condition based on new data
             updateScheduledNotifications() // Crucially, update notifications AFTER solarInfo is set
+            reviewManager.logSignificantAction()
             dataLoadingState = .success
             print("✅ SunViewModel: Successfully updated solar data for \(name) (TZ: \(locationTimezoneIdentifier)). Sunrise: \(formatTime(sunriseDate)), Sunset: \(formatTime(sunsetDate))")
             

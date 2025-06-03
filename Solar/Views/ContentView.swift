@@ -307,6 +307,19 @@ struct ContentView: View {
                 print("ContentView: App will enter foreground, refreshing solar data.")
                 viewModel.refreshSolarDataForCurrentCity()
             }
+            .onChange(of: viewModel.currentSkyCondition) {
+                print("MainSolarView: viewModel.currentSkyCondition changed to \(viewModel.currentSkyCondition). Updating barColor.")
+                switch viewModel.currentSkyCondition {
+                case .sunrise:
+                    barColor = AppColors.sunriseGradientStart
+                case .daylight:
+                    barColor = AppColors.daylightGradientStart
+                case .sunset:
+                    barColor = AppColors.sunsetGradientStart
+                case .night:
+                    barColor = AppColors.nightGradientStart
+                }
+            }
         }
     }
 }
