@@ -49,6 +49,7 @@ struct SolarDataListView: View {
                 SolarDataRow(iconName: "sun.max.fill", label: "Solar Noon", value: viewModel.formatTime(solarInfo.solarNoon))
                 SolarDataRow(iconName: "arrow.up.and.down.circle.fill", label: "Altitude", value: String(format: "%.1f°", solarInfo.currentAltitude))
                 SolarDataRow(iconName: "safari.fill", label: "Azimuth", value: String(format: "%.1f°", solarInfo.currentAzimuth))
+                SolarDataRow(iconName: "location.circle.fill", label: "Heading", value: solarInfo.heading)
                 SolarDataRow(iconName: "sun.max.trianglebadge.exclamationmark.fill",
                              label: "Daily UV Index",
                              value: "\(solarInfo.uvIndex) (\(solarInfo.uvIndexCategory))",

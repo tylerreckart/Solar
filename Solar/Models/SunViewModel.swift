@@ -35,6 +35,15 @@ class SunViewModel: ObservableObject {
         setupBindings()
 
         if appSettings.useCurrentLocation {
+            let defaults = UserDefaults.standard
+            if defaults.string(forKey: UserDefaultsKeys.lastSelectedCityName) == nil && defaults.object(forKey: UserDefaultsKeys.lastSelectedCityLatitude) == nil {
+                 // This is a proxy for "first launch". Load a default city but suppress errors.
+                 // This prevents an error screen from appearing before the location authorization flow.
+                 Task {
+                    await updateSolarDataForCity(name: "Philadelphia", latitude: 39.9526, longitude: -75.1652, suppressErrors: true)
+                 }
+            }
+            
             print("☀️ SunViewModel Init: 'Use Current Location' is ON. Attempting to get current location.")
             requestSolarDataForCurrentLocation()
         } else {
@@ -48,7 +57,7 @@ class SunViewModel: ObservableObject {
                 let timezoneId = defaults.string(forKey: UserDefaultsKeys.lastSelectedCityTimezoneId)
                 print("☀️ SunViewModel Init: Found last selected city: \(cityName). Loading.")
                 Task {
-                    await updateSolarDataForCity(name: cityName, latitude: latitude, longitude: longitude, explicitTimezoneIdentifier: timezoneId)
+                    await self.updateSolarDataForCity(name: cityName, latitude: latitude, longitude: longitude, explicitTimezoneIdentifier: timezoneId)
                 }
             } else {
                 print("☀️ SunViewModel Init: No last city and 'Use Current Location' is OFF. Setting error state / default.")
@@ -177,7 +186,22 @@ class SunViewModel: ObservableObject {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] receivedError in
                 guard let self = self else { return }
+                if self.locationManager.authorizationStatus == .notDetermined {
+                    print("ℹ️ SunViewModel: Ignoring LocationManager error because authorizationStatus is .notDetermained.")
+                    return
+                }
+
                 if self.isFetchingLocationDetails {
+                    if case .clError(let underlyingError) = receivedError {
+                        let nsError = underlyingError as NSError
+                        if nsError.domain == kCLErrorDomain && nsError.code == CLError.Code.locationUnknown.rawValue {
+                            print("⚠️ SunViewModel (Error Sink): Ignored transient kCLErrorLocationUnknown. Reverting to success state.")
+                            self.dataLoadingState = .success
+                            self.isFetchingLocationDetails = false
+                            return
+                        }
+                    }
+
                     print("❌ SunViewModel (Error Sink): LocationManager error received: \(receivedError.localizedDescription)")
                     self.dataLoadingState = .error(message: receivedError.localizedDescription)
                     self.isFetchingLocationDetails = false
@@ -204,7 +228,6 @@ class SunViewModel: ObservableObject {
     }
 
     func requestSolarDataForCurrentLocation() {
-        // ... (existing implementation)
         guard !isFetchingLocationDetails else {
             print("☀️ SunViewModel: Already fetching location details for current location.")
             return
@@ -236,7 +259,6 @@ class SunViewModel: ObservableObject {
     }
 
     func selectCity(name: String, latitude: Double?, longitude: Double?, timezoneIdentifier: String? = nil) {
-        // ... (existing implementation)
         Task { @MainActor in
             self.manualCitySelectionInProgressCount += 1
             print("☀️ SunViewModel: selectCity called for '\(name)'. manualCitySelectionInProgressCount = \(self.manualCitySelectionInProgressCount)")
@@ -255,7 +277,6 @@ class SunViewModel: ObservableObject {
     }
 
     func geocodeAndSelectCity(name: String) async {
-        // ... (existing implementation)
         guard !isGeocodingCity && manualCitySelectionInProgressCount == 0 else {
             print("☀️ SunViewModel: GeocodeAndSelectCity skipped for '\(name)', already geocoding or manual selection in progress.")
             return
@@ -313,11 +334,13 @@ class SunViewModel: ObservableObject {
         }
     }
     
-    private func updateSolarDataForCity(name: String, latitude: Double?, longitude: Double?, explicitTimezoneIdentifier: String? = nil) async {
+    private func updateSolarDataForCity(name: String, latitude: Double?, longitude: Double?, explicitTimezoneIdentifier: String? = nil, suppressErrors: Bool = false) async {
         dataLoadingState = .loading
-        // ... (rest of the existing data fetching logic) ...
+
         guard let lat = latitude, let lon = longitude else {
-            dataLoadingState = .error(message: "Latitude/Longitude not available for \(name).")
+            if !suppressErrors {
+                dataLoadingState = .error(message: "Latitude/Longitude not available for \(name).")
+            }
             if appSettings.useCurrentLocation && self.isFetchingLocationDetails { self.isFetchingLocationDetails = false }
             return
         }
@@ -325,7 +348,6 @@ class SunViewModel: ObservableObject {
         print("☀️ SunViewModel: Attempting to fetch solar data for \(name) at Lat: \(lat), Lon: \(lon)")
         do {
             let apiResponse = try await solarAPIService.fetchSolarData(latitude: lat, longitude: lon)
-            // ... (existing parsing logic for solar data)
             let locationTimezoneIdentifier = apiResponse.timezone
             
             guard let firstDateStr = apiResponse.daily.time.first,
@@ -334,7 +356,9 @@ class SunViewModel: ObservableObject {
                   let currentDate = solarAPIService.parseDateOnlyString(firstDateStr),
                   let sunriseDate = solarAPIService.parseDateTimeString(firstSunriseStr, timezoneIdentifier: locationTimezoneIdentifier),
                   let sunsetDate = solarAPIService.parseDateTimeString(firstSunsetStr, timezoneIdentifier: locationTimezoneIdentifier) else {
-                dataLoadingState = .error(message: "Could not parse date/time strings for \(name).")
+                if !suppressErrors {
+                    dataLoadingState = .error(message: "Could not parse date/time strings for \(name).")
+                }
                 if appSettings.useCurrentLocation && self.isFetchingLocationDetails { self.isFetchingLocationDetails = false }
                 return
             }
@@ -390,7 +414,6 @@ class SunViewModel: ObservableObject {
             let moonIllumination = dailyApiData.moon_phase?.first.flatMap{$0}
             let currentSunPosition = SunPositionCalculator.calculateSunPosition(date: Date(), latitude: lat, longitude: lon, timezoneIdentifier: locationTimezoneIdentifier)
 
-
             self.solarInfo = SolarInfo(city: name, latitude: lat, longitude: lon, currentDate: currentDate, sunrise: sunriseDate, sunset: sunsetDate, solarNoon: solarNoonDate, timezoneIdentifier: locationTimezoneIdentifier, hourlyUVData: parsedHourlyUV, currentAltitude: currentSunPosition?.altitude ?? 0.0, currentAzimuth: currentSunPosition?.azimuth ?? 0.0, uvIndex: uvIndexInt, uvIndexCategory: uvCategory, civilTwilightBegin: civilTwilightBegin, civilTwilightEnd: civilTwilightEnd, nauticalTwilightBegin: nauticalTwilightBegin, nauticalTwilightEnd: nauticalTwilightEnd, astronomicalTwilightBegin: astronomicalTwilightBegin, astronomicalTwilightEnd: astronomicalTwilightEnd, moonrise: moonrise, moonset: moonset, moonIlluminationFraction: moonIllumination, weatherCode: currentHourWeatherCode, cloudCover: currentHourCloudCover)
             
             var tempSolarInfo = self.solarInfo
@@ -421,7 +444,9 @@ class SunViewModel: ObservableObject {
 
         } catch {
             print("❌ SunViewModel: Error fetching or parsing solar data for \(name): \(error.localizedDescription)")
-            dataLoadingState = .error(message: "Failed to get solar data: \(error.localizedDescription)")
+            if !suppressErrors {
+                dataLoadingState = .error(message: "Failed to get solar data: \(error.localizedDescription)")
+            }
         }
         if appSettings.useCurrentLocation && self.isFetchingLocationDetails { self.isFetchingLocationDetails = false }
     }
@@ -543,8 +568,7 @@ class SunViewModel: ObservableObject {
                     let alertTime = uvItem.time // Schedule for the start of the hour
 
                     if uvIndexValue >= highUVThreshold && alertTime > Date() {
-                        // Optional: Only schedule the *first* upcoming high UV alert to avoid spam
-                        // if scheduledFirstHighUV { continue }
+                         if scheduledFirstHighUV { continue }
                         
                         NotificationScheduler.shared.scheduleUVNotification(
                             identifier: "highUVAlert_\(uvItem.id)", // Unique ID per hour slot
@@ -554,10 +578,9 @@ class SunViewModel: ObservableObject {
                             uvIndex: uvIndexValue,
                             threshold: highUVThreshold
                         )
-                        scheduledFirstHighUV = true // If only scheduling one
-                        // if you want multiple, remove scheduledFirstHighUV and the continue
+                        scheduledFirstHighUV = true
                     } else if alertTime <= Date() {
-                         // print("🗓️ Notifications: UV alert for \(self.formatTime(alertTime)) in \(cityName) is in the past or UV not high enough. UV: \(uvIndexValue). Skipping.")
+                          print("🗓️ Notifications: UV alert for \(self.formatTime(alertTime)) in \(cityName) is in the past or UV not high enough. UV: \(uvIndexValue). Skipping.")
                     }
                 }
                 if !scheduledFirstHighUV && !self.solarInfo.hourlyUVData.filter({ Int(round($0.uvIndex)) >= highUVThreshold && $0.time > Date() }).isEmpty {
@@ -576,7 +599,6 @@ class SunViewModel: ObservableObject {
     }
     
     func refreshSolarDataForCurrentCity() {
-        // ... (existing implementation)
         guard !isFetchingLocationDetails && !isGeocodingCity && manualCitySelectionInProgressCount == 0 else {
             print("☀️ SunViewModel: Refresh skipped, already fetching/processing location details or geocoding city.")
             return

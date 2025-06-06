@@ -1,11 +1,4 @@
-//
-//  SolarInfo.swift
-//  Solar
-//
-//  Created by Tyler Reckart on 5/13/25.
-//
-
-import Foundation
+// Solar/Models/SolarInfo.swift
 
 import Foundation
 
@@ -80,6 +73,12 @@ struct SolarInfo: Equatable {
         if illumination < 0.97 { return "Waning Crescent" }
         if illumination <= 1.0 { return "Full Moon" }
         return "N/A"
+    }
+
+    var heading: String {
+        let directions = ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"]
+        let index = Int((currentAzimuth / 22.5) + 0.5) % 16
+        return directions[index]
     }
     
     static func == (lhs: SolarInfo, rhs: SolarInfo) -> Bool {
