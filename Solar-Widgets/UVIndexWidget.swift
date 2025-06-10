@@ -24,7 +24,7 @@ struct UVIndexWidget: Widget {
         }
         .configurationDisplayName("UV Index")
         .description("Monitor UV levels and get sun protection recommendations.")
-        .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
+        .supportedFamilies([.systemSmall, .systemMedium])
     }
 }
 

@@ -11,6 +11,32 @@ import WidgetKit
 // MARK: - Color Extensions for Widgets
 
 extension Color {
+    /// Sky gradient colors matching main app exactly
+    static func skyGradientColors(for skyCondition: SkyCondition) -> [Color] {
+        switch skyCondition {
+        case .sunrise:
+            return [
+                Color(red: 255/255, green: 167/255, blue: 185/255),    // SunriseGradientStart
+                Color(red: 255/255, green: 209/255, blue: 194/255)     // SunriseGradientEnd
+            ]
+        case .daylight:
+            return [
+                Color(red: 29/255, green: 159/255, blue: 247/255),     // DaylightGradientStart
+                Color(red: 150/255, green: 217/255, blue: 237/255)     // DaylightGradientEnd
+            ]
+        case .sunset:
+            return [
+                Color(red: 207/255, green: 55/255, blue: 106/255),     // SunsetGradientStart
+                Color(red: 255/255, green: 140/255, blue: 0/255)       // SunsetGradientEnd
+            ]
+        case .night:
+            return [
+                Color(red: 0/255, green: 0/255, blue: 50/255),         // NightGradientStart
+                Color(red: 25/255, green: 25/255, blue: 112/255)       // NightGradientEnd
+            ]
+        }
+    }
+    
     /// Creates dynamic gradients based on time of day for Solar Path widgets
     static func timeOfDayGradient(progress: Double) -> [Color] {
         if progress < 0.15 { // Early morning

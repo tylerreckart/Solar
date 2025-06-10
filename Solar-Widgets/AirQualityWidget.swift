@@ -24,7 +24,7 @@ struct AirQualityWidget: Widget {
         }
         .configurationDisplayName("Air Quality")
         .description("Monitor air quality levels and health recommendations.")
-        .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
+        .supportedFamilies([.systemSmall, .systemMedium])
     }
 }
 

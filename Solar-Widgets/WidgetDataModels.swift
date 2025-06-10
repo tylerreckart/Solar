@@ -561,18 +561,6 @@ extension Color {
         return Color.pink
     }
     
-    static func skyGradientColors(for condition: SkyCondition) -> [Color] {
-        switch condition {
-        case .sunrise:
-            return [Color.orange, Color.pink, Color.blue]
-        case .daylight:
-            return [Color.cyan, Color.blue]
-        case .sunset:
-            return [Color.pink, Color.orange, Color.purple]
-        case .night:
-            return [Color.indigo, Color.black]
-        }
-    }
 }
 
 // MARK: - Widget Formatting Extensions
