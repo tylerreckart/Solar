@@ -34,13 +34,12 @@ extension Color {
 import SwiftUI
 
 struct SunPathView: View {
-    let progress: Double
-    let solarNoonProgress: Double = 0.5
+    let solarInfo: SolarInfo
     let skyCondition: SkyCondition
+    let useAccurateCalculations: Bool = false
 
     private let pathXInsetFactor: CGFloat = 0.1
-    private let pathYBaseFactor: CGFloat = 0.5
-    private let pathPeakHeightFactor: CGFloat = 0.001
+    private let pathYBaseFactor: CGFloat = 0.8
 
 
     private var gradientColors: [Color] {
@@ -64,23 +63,28 @@ struct SunPathView: View {
                 endPoint: .bottom
             )
             
-            SunPathShape(
-                xInsetFactor: pathXInsetFactor,
-                yBaseFactor: pathYBaseFactor,
-                peakHeightFactor: pathPeakHeightFactor
-            )
-            .stroke(style: StrokeStyle(lineWidth: 2, lineCap: .round))
-            .foregroundColor(.white.opacity(0.8))
+            // Use accurate astronomical calculations if available, fallback to simple shape
+            if useAccurateCalculations {
+                AccurateSunPathShape(
+                    solarInfo: solarInfo,
+                    xInsetFactor: pathXInsetFactor,
+                    yBaseFactor: pathYBaseFactor
+                )
+                .stroke(style: StrokeStyle(lineWidth: 2, lineCap: .round))
+                .foregroundColor(.white.opacity(0.8))
+            } else {
+                SunPathShape(
+                    xInsetFactor: pathXInsetFactor,
+                    yBaseFactor: pathYBaseFactor,
+                    peakHeightFactor: 0.3
+                )
+                .stroke(style: StrokeStyle(lineWidth: 2, lineCap: .round))
+                .foregroundColor(.white.opacity(0.8))
+            }
             
             GeometryReader { geometry in
                 let pathRect = CGRect(origin: .zero, size: geometry.size)
-                let sunPosition = calculateSunPosition(
-                    in: pathRect,
-                    progress: progress,
-                    xInsetFactor: pathXInsetFactor,
-                    yBaseFactor: pathYBaseFactor,
-                    peakHeightFactor: pathPeakHeightFactor
-                )
+                let sunPosition = calculateAccurateSunPosition(in: pathRect)
 
                 Circle()
                     .fill(RadialGradient(
@@ -101,24 +105,31 @@ struct SunPathView: View {
         .frame(height: 250)
     }
 
-    private func calculateSunPosition(
+    private func calculateAccurateSunPosition(in rect: CGRect) -> CGPoint {
+        // Use the same simple sine curve as the widgets for consistency
+        let width = rect.width
+        let height = rect.height
+        let progress = solarInfo.sunProgress
+        
+        // Simple arc calculation with less dramatic curve (matching widgets)
+        let x = width * progress
+        let y = height - (height * 0.4 * sin(progress * .pi)) // Less exaggerated arc
+        
+        return CGPoint(x: x, y: y)
+    }
+    
+    private func calculateSimpleSunPosition(
         in rect: CGRect,
         progress: Double,
-        xInsetFactor: CGFloat,    // Added parameter
-        yBaseFactor: CGFloat,     // Added parameter
-        peakHeightFactor: CGFloat // Added parameter
+        xInsetFactor: CGFloat,
+        yBaseFactor: CGFloat,
+        peakHeightFactor: CGFloat
     ) -> CGPoint {
-        let t = CGFloat(progress) // The parameter for the Bezier curve (0.0 to 1.0)
-
-        // Define P0, P1, P2 using the passed-in geometric factors
-        // P0: Start point
+        let t = CGFloat(progress)
         let p0 = CGPoint(x: rect.width * xInsetFactor, y: rect.height * yBaseFactor)
-        // P1: Control point (determines the peak)
         let p1 = CGPoint(x: rect.width / 2, y: rect.height * peakHeightFactor)
-        // P2: End point
         let p2 = CGPoint(x: rect.width * (1.0 - xInsetFactor), y: rect.height * yBaseFactor)
-
-        // Quadratic Bezier curve formula: B(t) = (1-t)^2 * P0 + 2 * (1-t) * t * P1 + t^2 * P2
+        
         let x = pow(1-t, 2) * p0.x + 2 * (1-t) * t * p1.x + pow(t, 2) * p2.x
         let y = pow(1-t, 2) * p0.y + 2 * (1-t) * t * p1.y + pow(t, 2) * p2.y
         
@@ -143,5 +154,8 @@ extension CGPoint {
 }
 
 #Preview {
-    ContentView().environment(\.managedObjectContext, PersistenceController.preview.container.viewContext)
+    SunPathView(
+        solarInfo: SolarInfo.placeholder(city: "San Francisco", lat: 37.7749, lon: -122.4194),
+        skyCondition: .daylight
+    )
 }

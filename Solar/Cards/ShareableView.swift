@@ -10,7 +10,6 @@ import SwiftUI
 struct ShareableView: View {
     let solarInfo: SolarInfo
     let skyCondition: SkyCondition
-    let sunPathProgress: Double
     let barColor: Color
 
     var body: some View {
@@ -23,7 +22,7 @@ struct ShareableView: View {
                 .background(barColor)
 
             // Sun Path View
-            SunPathView(progress: sunPathProgress, skyCondition: skyCondition)
+            SunPathView(solarInfo: solarInfo, skyCondition: skyCondition)
                 .frame(height: 250)
         }
         .background(Color.black)

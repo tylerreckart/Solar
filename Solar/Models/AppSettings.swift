@@ -8,6 +8,7 @@
 import Foundation
 import SwiftUI
 import Combine
+import WidgetKit
 
 struct DataSectionSettings: Identifiable, Codable, Hashable {
     var id = UUID() // Unique identifier for ForEach loops and list manipulation
@@ -29,7 +30,16 @@ struct DataSectionSettings: Identifiable, Codable, Hashable {
 class AppSettings: ObservableObject {
     static let shared = AppSettings()
     
-    @Published var useCurrentLocation: Bool = true
+    @Published var useCurrentLocation: Bool = true { // Add didSet observer
+        didSet {
+            UserDefaults.standard.set(useCurrentLocation, forKey: UserDefaultsKeys.useCurrentLocation) // Save to UserDefaults
+            SharedDataManager.shared.useCurrentLocation = useCurrentLocation // Also save to shared storage for widgets
+            
+            // Refresh widgets when location setting changes
+            print("🔄 AppSettings: useCurrentLocation changed to \(useCurrentLocation), refreshing widgets")
+            WidgetCenter.shared.reloadAllTimelines()
+        }
+    }
     @Published var notificationsEnabled: Bool = true
     @Published var sunriseAlert: Bool = true
     @Published var sunsetAlert: Bool = true
@@ -44,7 +54,10 @@ class AppSettings: ObservableObject {
     private let userDefaultsKey = "appDataSectionsConfiguration"
 
     init() {
-        // Try to load saved settings
+        // Load useCurrentLocation from UserDefaults, default to true if not found
+        self.useCurrentLocation = UserDefaults.standard.object(forKey: UserDefaultsKeys.useCurrentLocation) as? Bool ?? true
+        
+        // Try to load saved settings for dataSections
         if let savedData = UserDefaults.standard.data(forKey: userDefaultsKey),
            let decodedSections = try? JSONDecoder().decode([DataSectionSettings].self, from: savedData) {
 
@@ -70,6 +83,9 @@ class AppSettings: ObservableObject {
                 DataSectionSettings(type: type, isVisible: true, order: index, symbol: "")
             }
         }
+        
+        // After all properties are initialized, sync useCurrentLocation to SharedDataManager
+        SharedDataManager.shared.useCurrentLocation = self.useCurrentLocation
     }
 
     private func saveDataSectionsToUserDefaults() {
@@ -97,6 +113,20 @@ class AppSettings: ObservableObject {
         if let index = dataSections.firstIndex(where: { $0.type == sectionType }) {
             dataSections[index].isVisible.toggle()
             // Note: saveDataSectionsToUserDefaults() is called by the @Published didSet
+        }
+    }
+    
+    // Debug function to check widget data sync
+    func debugWidgetDataSync() {
+        print("🔍 AppSettings: Debug Widget Data Sync")
+        print("  - useCurrentLocation (AppSettings): \(useCurrentLocation)")
+        SharedDataManager.shared.printDebugInfo()
+        
+        // Test widget location resolution
+        if let location = SharedDataManager.shared.getWidgetLocation() {
+            print("  - Widget would use: \(location.city) (\(location.latitude), \(location.longitude))")
+        } else {
+            print("  - Widget location resolution failed")
         }
     }
 }

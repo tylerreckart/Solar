@@ -6,7 +6,21 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		DB21D75E2DF84BD000B5AA28 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = DB21D75D2DF84BD000B5AA28 /* WidgetKit.framework */; };
+		DB21D7602DF84BD000B5AA28 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = DB21D75F2DF84BD000B5AA28 /* SwiftUI.framework */; };
+		DB21D76F2DF84BD100B5AA28 /* Solar-WidgetsExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = DB21D75C2DF84BD000B5AA28 /* Solar-WidgetsExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		DB5B516E2DF496D0009CAE87 /* HappyPath in Frameworks */ = {isa = PBXBuildFile; productRef = DB5B516D2DF496D0009CAE87 /* HappyPath */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
+		DB21D76D2DF84BD100B5AA28 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = DBC51BB32DD389BF000ACFA4 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = DB21D75B2DF84BD000B5AA28;
+			remoteInfo = "Solar-WidgetsExtension";
+		};
 		DBC51BCE2DD389C1000ACFA4 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = DBC51BB32DD389BF000ACFA4 /* Project object */;
@@ -23,13 +37,38 @@
 		};
 /* End PBXContainerItemProxy section */
 
+/* Begin PBXCopyFilesBuildPhase section */
+		DB21D7702DF84BD100B5AA28 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				DB21D76F2DF84BD100B5AA28 /* Solar-WidgetsExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
+		DB21D75C2DF84BD000B5AA28 /* Solar-WidgetsExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = "Solar-WidgetsExtension.appex"; sourceTree = BUILT_PRODUCTS_DIR; };
+		DB21D75D2DF84BD000B5AA28 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
+		DB21D75F2DF84BD000B5AA28 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
+		DBBC5D4E2DF896B600B16852 /* Solar-WidgetsExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "Solar-WidgetsExtension.entitlements"; sourceTree = "<group>"; };
 		DBC51BBB2DD389BF000ACFA4 /* Solar.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Solar.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		DBC51BCD2DD389C1000ACFA4 /* SolarTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SolarTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		DBC51BD72DD389C1000ACFA4 /* SolarUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SolarUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		DB21D7742DF84BD100B5AA28 /* Exceptions for "Solar-Widgets" folder in "Solar-WidgetsExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = DB21D75B2DF84BD000B5AA28 /* Solar-WidgetsExtension */;
+		};
 		DBC51C002DD38ED2000ACFA4 /* Exceptions for "Solar" folder in "Solar" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
@@ -40,6 +79,14 @@
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		DB21D7612DF84BD000B5AA28 /* Solar-Widgets */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				DB21D7742DF84BD100B5AA28 /* Exceptions for "Solar-Widgets" folder in "Solar-WidgetsExtension" target */,
+			);
+			path = "Solar-Widgets";
+			sourceTree = "<group>";
+		};
 		DBC51BBD2DD389BF000ACFA4 /* Solar */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
@@ -61,10 +108,20 @@
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		DB21D7592DF84BD000B5AA28 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				DB21D7602DF84BD000B5AA28 /* SwiftUI.framework in Frameworks */,
+				DB21D75E2DF84BD000B5AA28 /* WidgetKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		DBC51BB82DD389BF000ACFA4 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				DB5B516E2DF496D0009CAE87 /* HappyPath in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -85,12 +142,24 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		DB5B516C2DF496D0009CAE87 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				DB21D75D2DF84BD000B5AA28 /* WidgetKit.framework */,
+				DB21D75F2DF84BD000B5AA28 /* SwiftUI.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		DBC51BB22DD389BF000ACFA4 = {
 			isa = PBXGroup;
 			children = (
+				DBBC5D4E2DF896B600B16852 /* Solar-WidgetsExtension.entitlements */,
 				DBC51BBD2DD389BF000ACFA4 /* Solar */,
 				DBC51BD02DD389C1000ACFA4 /* SolarTests */,
 				DBC51BDA2DD389C1000ACFA4 /* SolarUITests */,
+				DB21D7612DF84BD000B5AA28 /* Solar-Widgets */,
+				DB5B516C2DF496D0009CAE87 /* Frameworks */,
 				DBC51BBC2DD389BF000ACFA4 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -101,6 +170,7 @@
 				DBC51BBB2DD389BF000ACFA4 /* Solar.app */,
 				DBC51BCD2DD389C1000ACFA4 /* SolarTests.xctest */,
 				DBC51BD72DD389C1000ACFA4 /* SolarUITests.xctest */,
+				DB21D75C2DF84BD000B5AA28 /* Solar-WidgetsExtension.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -108,6 +178,28 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		DB21D75B2DF84BD000B5AA28 /* Solar-WidgetsExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = DB21D7732DF84BD100B5AA28 /* Build configuration list for PBXNativeTarget "Solar-WidgetsExtension" */;
+			buildPhases = (
+				DB21D7582DF84BD000B5AA28 /* Sources */,
+				DB21D7592DF84BD000B5AA28 /* Frameworks */,
+				DB21D75A2DF84BD000B5AA28 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				DB21D7612DF84BD000B5AA28 /* Solar-Widgets */,
+			);
+			name = "Solar-WidgetsExtension";
+			packageProductDependencies = (
+			);
+			productName = "Solar-WidgetsExtension";
+			productReference = DB21D75C2DF84BD000B5AA28 /* Solar-WidgetsExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 		DBC51BBA2DD389BF000ACFA4 /* Solar */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = DBC51BE12DD389C1000ACFA4 /* Build configuration list for PBXNativeTarget "Solar" */;
@@ -115,16 +207,19 @@
 				DBC51BB72DD389BF000ACFA4 /* Sources */,
 				DBC51BB82DD389BF000ACFA4 /* Frameworks */,
 				DBC51BB92DD389BF000ACFA4 /* Resources */,
+				DB21D7702DF84BD100B5AA28 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				DB21D76E2DF84BD100B5AA28 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				DBC51BBD2DD389BF000ACFA4 /* Solar */,
 			);
 			name = Solar;
 			packageProductDependencies = (
+				DB5B516D2DF496D0009CAE87 /* HappyPath */,
 			);
 			productName = Solar;
 			productReference = DBC51BBB2DD389BF000ACFA4 /* Solar.app */;
@@ -183,9 +278,12 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
-				LastSwiftUpdateCheck = 1630;
+				LastSwiftUpdateCheck = 2600;
 				LastUpgradeCheck = 1630;
 				TargetAttributes = {
+					DB21D75B2DF84BD000B5AA28 = {
+						CreatedOnToolsVersion = 26.0;
+					};
 					DBC51BBA2DD389BF000ACFA4 = {
 						CreatedOnToolsVersion = 16.3;
 					};
@@ -208,6 +306,9 @@
 			);
 			mainGroup = DBC51BB22DD389BF000ACFA4;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				DBEB946E2DF4958700B3A2AC /* XCRemoteSwiftPackageReference "HappyPath" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = DBC51BBC2DD389BF000ACFA4 /* Products */;
 			projectDirPath = "";
@@ -216,11 +317,19 @@
 				DBC51BBA2DD389BF000ACFA4 /* Solar */,
 				DBC51BCC2DD389C1000ACFA4 /* SolarTests */,
 				DBC51BD62DD389C1000ACFA4 /* SolarUITests */,
+				DB21D75B2DF84BD000B5AA28 /* Solar-WidgetsExtension */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		DB21D75A2DF84BD000B5AA28 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		DBC51BB92DD389BF000ACFA4 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -245,6 +354,13 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		DB21D7582DF84BD000B5AA28 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		DBC51BB72DD389BF000ACFA4 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -269,6 +385,11 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		DB21D76E2DF84BD100B5AA28 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = DB21D75B2DF84BD000B5AA28 /* Solar-WidgetsExtension */;
+			targetProxy = DB21D76D2DF84BD100B5AA28 /* PBXContainerItemProxy */;
+		};
 		DBC51BCF2DD389C1000ACFA4 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = DBC51BBA2DD389BF000ACFA4 /* Solar */;
@@ -282,6 +403,68 @@
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
+		DB21D7712DF84BD100B5AA28 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = "Solar-WidgetsExtension.entitlements";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 78FCYG6ZD9;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Solar-Widgets/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "Solar-Widgets";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "Haptic-Software-LLC.Solar.Solar-Widgets";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		DB21D7722DF84BD100B5AA28 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = "Solar-WidgetsExtension.entitlements";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 78FCYG6ZD9;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Solar-Widgets/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "Solar-Widgets";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "Haptic-Software-LLC.Solar.Solar-Widgets";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 		DBC51BDF2DD389C1000ACFA4 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -408,8 +591,9 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Solar/Solar.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 4;
+				CURRENT_PROJECT_VERSION = 6;
 				DEVELOPMENT_TEAM = 78FCYG6ZD9;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -427,7 +611,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.1.1;
+				MARKETING_VERSION = 1.1.3;
 				PRODUCT_BUNDLE_IDENTIFIER = "Haptic-Software-LLC.Solar";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -443,8 +627,9 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Solar/Solar.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 4;
+				CURRENT_PROJECT_VERSION = 6;
 				DEVELOPMENT_TEAM = 78FCYG6ZD9;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -462,7 +647,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.1.1;
+				MARKETING_VERSION = 1.1.3;
 				PRODUCT_BUNDLE_IDENTIFIER = "Haptic-Software-LLC.Solar";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -548,6 +733,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		DB21D7732DF84BD100B5AA28 /* Build configuration list for PBXNativeTarget "Solar-WidgetsExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				DB21D7712DF84BD100B5AA28 /* Debug */,
+				DB21D7722DF84BD100B5AA28 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		DBC51BB62DD389BF000ACFA4 /* Build configuration list for PBXProject "Solar" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
@@ -585,6 +779,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		DBEB946E2DF4958700B3A2AC /* XCRemoteSwiftPackageReference "HappyPath" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/tylerreckart/HappyPath.git";
+			requirement = {
+				branch = main;
+				kind = branch;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		DB5B516D2DF496D0009CAE87 /* HappyPath */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = DBEB946E2DF4958700B3A2AC /* XCRemoteSwiftPackageReference "HappyPath" */;
+			productName = HappyPath;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = DBC51BB32DD389BF000ACFA4 /* Project object */;
 }

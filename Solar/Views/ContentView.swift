@@ -1,9 +1,4 @@
-//
-//  ContentView.swift
-//  Solar
-//
-//  Created by Tyler Reckart on 5/13/25.
-//
+// Solar/Views/ContentView.swift
 
 import SwiftUI
 import CoreData
@@ -62,7 +57,7 @@ struct NavigationBar: View {
         .padding(.top, 10)
         .padding(.bottom, 5)
         .background(self.barColor)
-        .onChange(of: conditions) { oldConditions, newConditions in // Ensure correct onChange signature
+        .onChange(of: conditions) { oldConditions, newConditions in
             switch newConditions {
             case .sunrise:
                 self.barColor = AppColors.sunriseGradientStart
@@ -77,19 +72,17 @@ struct NavigationBar: View {
     }
 }
 
-// Extracted Main Content View for clarity
 struct MainSolarView: View {
     @ObservedObject var viewModel: SunViewModel
-    @EnvironmentObject var appSettings: AppSettings // Ensure AppSettings is available if needed by subviews
+    @EnvironmentObject var appSettings: AppSettings
     
-    // Bindings and States previously in ContentView that are relevant to MainSolarView
     @Binding var barColor: Color
     @Binding var showingCitySearchSheet: Bool
     @Binding var showingSettingsView: Bool
     @Binding var showShareSheet: Bool
     @Binding var activityItems: [Any]
     
-    @Environment(\.managedObjectContext) private var viewContext // If CitySearchView needs it
+    @Environment(\.managedObjectContext) private var viewContext
     
     @State private var isPreparingShareData: Bool = false
 
@@ -113,8 +106,8 @@ struct MainSolarView: View {
                             .frame(maxWidth: .infinity)
                             .background(self.barColor)
                         
-                        SunPathView(progress: viewModel.solarInfo.sunProgress, skyCondition: viewModel.currentSkyCondition)
-                            .id(viewModel.solarInfo.city) // Re-render if city changes
+                        SunPathView(solarInfo: viewModel.solarInfo, skyCondition: viewModel.currentSkyCondition)
+                            .id(viewModel.solarInfo.city)
                         
                         ZStack {
                             Color.black.frame(maxHeight: .infinity).edgesIgnoringSafeArea(.all)
@@ -144,16 +137,16 @@ struct MainSolarView: View {
                                             .padding(.horizontal)
                                     }
                                 }
-                                Spacer() // Pushes content up
+                                Spacer()
                             }
-                            .offset(y: -50) // Adjust for SunPathView overlap design
+                            .offset(y: -50)
                         }
                     }
                 }
                 .background(LinearGradient(
                     gradient: Gradient(stops: [
                         .init(color: barColor, location: 0.0),
-                        .init(color: barColor, location: 0.5), // Extends barColor further down
+                        .init(color: barColor, location: 0.5),
                         .init(color: .black, location: 0.5),
                         .init(color: .black, location: 1.0)
                     ]),
@@ -170,22 +163,21 @@ struct MainSolarView: View {
                         .progressViewStyle(CircularProgressViewStyle(tint: .white))
                         .font(.caption)
                         .padding()
-                        .background(.ultraThinMaterial) // Material background
+                        .background(.ultraThinMaterial)
                         .cornerRadius(10)
                         .shadow(radius: 5)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(Color.black.opacity(0.1)) // Slight dimming
+                .background(Color.black.opacity(0.1))
                 .edgesIgnoringSafeArea(.all)
             }
         }
         .navigationBarHidden(true)
-        // .onAppear and .onReceive moved to the root ContentView's NavigationView container
         .sheet(isPresented: $showingCitySearchSheet) {
             CitySearchView(viewModel: viewModel).environment(\.managedObjectContext, self.viewContext)
         }
         .sheet(isPresented: $showingSettingsView) {
-            SettingsView(appSettings: appSettings) // appSettings is from @EnvironmentObject
+            SettingsView(appSettings: appSettings)
         }
         .sheet(isPresented: $showShareSheet) {
             ActivityView(activityItems: activityItems)
@@ -194,15 +186,12 @@ struct MainSolarView: View {
 
     @MainActor
     private func prepareAndShowShareSheet() {
-        // Ensure viewModel.solarInfo.city is valid and not a placeholder before preparing items
         guard !viewModel.solarInfo.city.isEmpty,
               viewModel.solarInfo.city != "Loading...",
               viewModel.solarInfo.city != "Select a City",
-              viewModel.solarInfo.city != SolarInfo.placeholder().city // Check against actual placeholder value
+              viewModel.solarInfo.city != SolarInfo.placeholder().city
         else {
             print("Share Sheet: City data not ready ('\(viewModel.solarInfo.city)'), aborting share.")
-            // Optionally, you could set an alert to inform the user.
-            // For now, we just prevent the share sheet from showing with bad data.
             return
         }
         
@@ -219,18 +208,16 @@ struct MainSolarView: View {
                 itemsToShare.append(appURL)
             }
             
-            // Update the activityItems state
             self.activityItems = itemsToShare
 
             do {
                 try await Task.sleep(for: .milliseconds(1000))
             } catch {
                 print("Share Sheet: Task.sleep was cancelled.")
-                isPreparingShareData = false // Ensure indicator is hidden on error/cancellation
+                isPreparingShareData = false
                 return
             }
             
-            // Check if the task was cancelled during sleep
             if Task.isCancelled {
                 print("Share Sheet: Task was cancelled after sleep.")
                 isPreparingShareData = false
@@ -250,9 +237,8 @@ struct MainSolarView: View {
 struct ContentView: View {
     @Environment(\.managedObjectContext) private var viewContext
     @StateObject private var viewModel = SunViewModel()
-    @EnvironmentObject var appSettings: AppSettings // Inject AppSettings
+    @EnvironmentObject var appSettings: AppSettings
 
-    // States that were previously in ContentView, now passed to MainSolarView if needed by it or its sheets
     @State private var showingCitySearchSheet = false
     @State private var showingSettingsView = false
     @State private var showShareSheet = false
@@ -262,19 +248,15 @@ struct ContentView: View {
 
     var body: some View {
         NavigationView {
-            VStack { // Encapsulate switch in a VStack or Group if needed
+            VStack {
                 switch viewModel.dataLoadingState {
                 case .idle:
                     ProgressView()
                     Text("Initializing...")
                         .font(.caption)
                         .foregroundColor(.gray)
-                        .onAppear { // Trigger initial load if idle for too long (e.g., defensive)
-                            if viewModel.solarInfo.city.isEmpty || viewModel.solarInfo.city == "Loading..." {
-                                print("ContentView: ViewModel is idle, attempting to refresh solar data.")
-                                viewModel.refreshSolarDataForCurrentCity()
-                            }
-                        }
+                        // Removed the onAppear block that was eagerly fetching data.
+                        // Initial data loading is now handled in SunViewModel.init()
                 case .loading:
                     ProgressView()
                     Text("Fetching solar data...")
@@ -290,22 +272,34 @@ struct ContentView: View {
                         activityItems: $activityItems
                     )
                 case .error(let message):
-                    ErrorView(message: message) {
-                        print("ContentView: Retry action tapped for error: \(message)")
-                        viewModel.refreshSolarDataForCurrentCity()
+                    if message.contains("Location access was denied") || message.contains("Location access is restricted") || message.contains("Location permission status: Not Determined") {
+                        ErrorView(message: message) {
+                            if let url = URL(string: UIApplication.openSettingsURLString) {
+                                UIApplication.shared.open(url)
+                            }
+                            viewModel.refreshSolarDataForCurrentCity()
+                        }
+                    } else if message.contains("Please search for a city.") || message.contains("No coordinates found for") || message.contains("No cities found matching") {
+                        ErrorView(message: message) {
+                            showingCitySearchSheet = true
+                        }
+                    } else {
+                        ErrorView(message: message) {
+                            print("ContentView: Generic retry action tapped for error: \(message)")
+                            viewModel.refreshSolarDataForCurrentCity()
+                        }
                     }
                 }
             }
-            .navigationBarHidden(true) // Keep this on the VStack inside NavigationView
+            .navigationBarHidden(true)
             .onAppear {
-                // Initial data refresh trigger, especially if init didn't complete for some reason
-                // Or if coming back to the view.
-                print("ContentView: onAppear, refreshing solar data.")
-                viewModel.refreshSolarDataForCurrentCity()
+                // Keep this onAppear for initial setup that might be missed by init if view hierarchy is complex,
+                // but no longer triggers a data fetch if viewModel is already handling it.
+                // It ensures the ViewModel is observed and can begin its lifecycle properly.
             }
             .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
                 print("ContentView: App will enter foreground, refreshing solar data.")
-                viewModel.refreshSolarDataForCurrentCity()
+                viewModel.refreshSolarDataForCurrentCity() // Keep this for foreground refresh.
             }
             .onChange(of: viewModel.currentSkyCondition) {
                 print("MainSolarView: viewModel.currentSkyCondition changed to \(viewModel.currentSkyCondition). Updating barColor.")
@@ -318,6 +312,17 @@ struct ContentView: View {
                     barColor = AppColors.sunsetGradientStart
                 case .night:
                     barColor = AppColors.nightGradientStart
+                }
+            }
+            .onChange(of: viewModel.shouldDismissActiveSheets) { dismiss in
+                if dismiss {
+                    withAnimation {
+                        showingCitySearchSheet = false
+                        showingSettingsView = false
+                        showShareSheet = false
+                    }
+                    viewModel.shouldDismissActiveSheets = false
+                    print("ContentView: Dismissed active sheets due to data refresh.")
                 }
             }
         }

@@ -18,17 +18,100 @@ struct SunPathShape: Shape {
         let width = rect.width
         let height = rect.height
         
-        // Start point of the parabola (e.g., sunrise)
-        let startPoint = CGPoint(x: width * xInsetFactor, y: height * yBaseFactor)
+        // Draw a simple arc using points along the sine curve (matching widgets)
+        let points = (0...20).map { i in
+            let progress = Double(i) / 20.0
+            let x = width * progress
+            let y = height - (height * 0.4 * sin(progress * .pi))
+            return CGPoint(x: x, y: y)
+        }
         
-        // End point of the parabola (e.g., sunset)
-        let endPoint = CGPoint(x: width * (1.0 - xInsetFactor), y: height * yBaseFactor)
+        if let firstPoint = points.first {
+            path.move(to: firstPoint)
+            for point in points.dropFirst() {
+                path.addLine(to: point)
+            }
+        }
         
-        // Control point for the quadratic Bezier curve, determining the peak of the parabola
-        let controlPoint = CGPoint(x: width / 2, y: height * peakHeightFactor)
+        return path
+    }
+}
 
-        path.move(to: startPoint)
-        path.addQuadCurve(to: endPoint, control: controlPoint)
+// MARK: - Accurate Astronomical Sun Path Shape
+
+struct AccurateSunPathShape: Shape {
+    let solarInfo: SolarInfo
+    let xInsetFactor: CGFloat
+    let yBaseFactor: CGFloat
+    
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        
+        guard let lat = solarInfo.latitude,
+              let lon = solarInfo.longitude,
+              let timezone = solarInfo.timezoneIdentifier else {
+            // Fallback to simple shape if data is unavailable
+            return SunPathShape(
+                xInsetFactor: xInsetFactor,
+                yBaseFactor: yBaseFactor,
+                peakHeightFactor: 0.3
+            ).path(in: rect)
+        }
+        
+        // Generate accurate sun path points using astronomical calculations
+        let pathPoints = SunPositionCalculator.generateAccurateSunPath(
+            date: solarInfo.currentDate,
+            latitude: lat,
+            longitude: lon,
+            timezoneIdentifier: timezone,
+            sunrise: solarInfo.sunrise,
+            sunset: solarInfo.sunset,
+            solarNoon: solarInfo.solarNoon,
+            in: rect,
+            xInsetFactor: xInsetFactor,
+            yBaseFactor: yBaseFactor,
+            pointCount: 50
+        )
+        
+        guard !pathPoints.isEmpty else {
+            // Fallback if calculation fails
+            return SunPathShape(
+                xInsetFactor: xInsetFactor,
+                yBaseFactor: yBaseFactor,
+                peakHeightFactor: 0.3
+            ).path(in: rect)
+        }
+        
+        // Create smooth curve through calculated points
+        if let firstPoint = pathPoints.first {
+            path.move(to: firstPoint)
+            
+            if pathPoints.count > 2 {
+                // Use curve fitting for smooth path
+                for i in 1..<pathPoints.count {
+                    let point = pathPoints[i]
+                    
+                    if i == 1 {
+                        // First curve segment
+                        let midPoint = CGPoint(
+                            x: (pathPoints[0].x + point.x) / 2,
+                            y: (pathPoints[0].y + point.y) / 2
+                        )
+                        path.addLine(to: midPoint)
+                    } else {
+                        // Smooth curve using previous point as control
+                        let previousPoint = pathPoints[i - 1]
+                        let controlPoint = previousPoint
+                        path.addQuadCurve(to: point, control: controlPoint)
+                    }
+                }
+            } else {
+                // Simple line if not enough points
+                for point in pathPoints.dropFirst() {
+                    path.addLine(to: point)
+                }
+            }
+        }
         
         return path
     }

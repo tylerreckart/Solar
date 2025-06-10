@@ -6,20 +6,19 @@
 //
 
 import SwiftUI
-import UserNotifications // Import UserNotifications
+import UserNotifications
+import HappyPath
+import WidgetKit
 
 @main
 struct SolarApp: App {
     let persistenceController = PersistenceController.shared
     @StateObject var appSettings = AppSettings.shared
-    private let reviewManager = ReviewManager.shared
     @Environment(\.scenePhase) var scenePhase
     
     init() {
         // Initial request for notification permission
         requestNotificationPermissionAndUpdateSettings()
-        // Track app actions
-        reviewManager.incrementAppLaunchCount()
     }
 
     var body: some Scene {
@@ -30,24 +29,14 @@ struct SolarApp: App {
                 .fontDesign(.rounded)
                 .preferredColorScheme(.dark)
                 .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
-                    // Re-check permissions and update settings when app enters foreground
-                    print("App entered foreground, checking notification permissions.")
                     requestNotificationPermissionAndUpdateSettings()
+                    // Refresh widgets when app becomes active
+                    print("🔄 SolarApp: App became active, refreshing widgets")
+                    WidgetCenter.shared.reloadAllTimelines()
                 }
-        }
-        .onChange(of: scenePhase) { oldPhase, newPhase in
-            if newPhase == .active {
-                // App became active, consider prompting for review after a slight delay
-                // This ensures the UI is settled.
-                DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { // 2-second delay
-                    print("🚀 ReviewManager: App became active, checking for review prompt (time/launch based).")
-                    reviewManager.requestReviewOnAppActive()
-                }
-            }
         }
     }
 
-    // Helper function to request notification permission and update AppSettings
     private func requestNotificationPermissionAndUpdateSettings() {
         let center = UNUserNotificationCenter.current()
         center.getNotificationSettings { settings in
@@ -78,14 +67,11 @@ struct SolarApp: App {
                             if let error = error {
                                 print("Notification permission request error: \(error.localizedDescription)")
                             }
-                            // After request, trigger a notification update in ViewModel if needed
-                            // This might be handled by the AppSettings publisher in SunViewModel
                         }
                     }
                 @unknown default:
                     print("Unknown notification authorization status.")
                     if self.appSettings.notificationsEnabled {
-                        // self.appSettings.notificationsEnabled = false // Be cautious with unknown state
                         print("Unknown notification status, AppSettings.notificationsEnabled remains \(self.appSettings.notificationsEnabled).")
                     }
                 }

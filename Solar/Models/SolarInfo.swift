@@ -207,6 +207,25 @@ struct SolarInfo: Equatable {
         return max(0.0, min(1.0, progress))
     }
     
+    /// Enhanced solar path data with accurate astronomical calculations
+    var solarPathData: SolarPathData? {
+        guard let lat = latitude,
+              let lon = longitude,
+              let timezone = timezoneIdentifier else {
+            return nil
+        }
+        
+        return SunPositionCalculator.calculateSolarPathData(
+            date: currentDate,
+            latitude: lat,
+            longitude: lon,
+            timezoneIdentifier: timezone,
+            sunrise: sunrise,
+            sunset: sunset,
+            solarNoon: solarNoon
+        )
+    }
+    
     // Helper to get a consistent placeholder date
     private static func placeholderDate() -> Date {
         var components = DateComponents()

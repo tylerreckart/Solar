@@ -1,0 +1,15 @@
+{
+  "originHash" : "a5f60061a82d9e6bd2e16ded908f127367d703933368d45b054d2dcb433e5666",
+  "pins" : [
+    {
+      "identity" : "happypath",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/tylerreckart/HappyPath.git",
+      "state" : {
+        "branch" : "main",
+        "revision" : "d8d078d1e84568e9007102f4e22f9430059a2214"
+      }
+    }
+  ],
+  "version" : 3
+}

@@ -17,11 +17,173 @@ public struct SunPosition {
     public let azimuth: CLLocationDegrees
 }
 
+// MARK: - Enhanced Solar Path Data
+public struct SolarPathData {
+    /// Current sun position
+    public let currentPosition: SunPosition
+    /// Sun position at sunrise
+    public let sunrisePosition: SunPosition
+    /// Sun position at solar noon (maximum altitude for the day)
+    public let solarNoonPosition: SunPosition
+    /// Sun position at sunset
+    public let sunsetPosition: SunPosition
+    /// Progress along the sun's path (0.0 at sunrise, 1.0 at sunset)
+    public let sunProgress: Double
+    /// Normalized altitude progress (0.0 at horizon, 1.0 at maximum daily altitude)
+    public let altitudeProgress: Double
+    /// Maximum solar altitude for this day at this location
+    public let maxDailyAltitude: Double
+    /// True solar noon time (may differ from 12:00 due to equation of time)
+    public let trueSolarNoon: Date
+}
+
 // MARK: - SunPositionCalculator
 public struct SunPositionCalculator {
 
     // MARK: - Public Calculation Method
     
+    /// Calculates comprehensive solar path data for accurate visualization
+    /// - Parameters:
+    ///   - date: The specific `Date` for which to calculate the sun's path data
+    ///   - latitude: Observer's latitude in degrees
+    ///   - longitude: Observer's longitude in degrees (East positive, West negative)
+    ///   - timezoneIdentifier: The IANA timezone identifier for the given latitude/longitude
+    ///   - sunrise: Sunrise time for the day
+    ///   - sunset: Sunset time for the day
+    ///   - solarNoon: Solar noon time for the day
+    /// - Returns: A `SolarPathData` struct containing all data needed for accurate sun path visualization
+    public static func calculateSolarPathData(
+        date: Date,
+        latitude: CLLocationDegrees,
+        longitude: CLLocationDegrees,
+        timezoneIdentifier: String,
+        sunrise: Date,
+        sunset: Date,
+        solarNoon: Date
+    ) -> SolarPathData? {
+        guard let currentPosition = calculateSunPosition(date: date, latitude: latitude, longitude: longitude, timezoneIdentifier: timezoneIdentifier),
+              let sunrisePosition = calculateSunPosition(date: sunrise, latitude: latitude, longitude: longitude, timezoneIdentifier: timezoneIdentifier),
+              let solarNoonPosition = calculateSunPosition(date: solarNoon, latitude: latitude, longitude: longitude, timezoneIdentifier: timezoneIdentifier),
+              let sunsetPosition = calculateSunPosition(date: sunset, latitude: latitude, longitude: longitude, timezoneIdentifier: timezoneIdentifier) else {
+            return nil
+        }
+        
+        // Calculate progress along the sun's path
+        let totalDaylightSeconds = sunset.timeIntervalSince(sunrise)
+        let secondsSinceSunrise = date.timeIntervalSince(sunrise)
+        let sunProgress = totalDaylightSeconds > 0 ? max(0.0, min(1.0, secondsSinceSunrise / totalDaylightSeconds)) : 0.5
+        
+        // Calculate altitude progress (normalized to maximum daily altitude)
+        let maxDailyAltitude = solarNoonPosition.altitude
+        let altitudeProgress = maxDailyAltitude > 0 ? max(0.0, min(1.0, currentPosition.altitude / maxDailyAltitude)) : 0.0
+        
+        return SolarPathData(
+            currentPosition: currentPosition,
+            sunrisePosition: sunrisePosition,
+            solarNoonPosition: solarNoonPosition,
+            sunsetPosition: sunsetPosition,
+            sunProgress: sunProgress,
+            altitudeProgress: altitudeProgress,
+            maxDailyAltitude: maxDailyAltitude,
+            trueSolarNoon: solarNoon
+        )
+    }
+    
+    /// Calculates accurate sun position on visual path based on real altitude
+    /// - Parameters:
+    ///   - solarPathData: The calculated solar path data
+    ///   - rect: The rect of the visualization area
+    ///   - xInsetFactor: Horizontal inset factor for start/end points
+    ///   - yBaseFactor: Vertical position factor for horizon line
+    /// - Returns: CGPoint representing the sun's position on the visual path
+    public static func calculateAccurateSunPosition(
+        solarPathData: SolarPathData,
+        in rect: CGRect,
+        xInsetFactor: CGFloat = 0.1,
+        yBaseFactor: CGFloat = 0.85
+    ) -> CGPoint {
+        let width = rect.width
+        let height = rect.height
+        
+        // Horizontal position based on time progress (sunrise to sunset)
+        let x = width * xInsetFactor + (width * (1.0 - 2.0 * xInsetFactor)) * CGFloat(solarPathData.sunProgress)
+        
+        // Vertical position based on actual sun altitude
+        // Transform altitude to visual height using realistic scaling
+        let maxAltitudeRadians = solarPathData.maxDailyAltitude * .pi / 180.0
+        let currentAltitudeRadians = max(0, solarPathData.currentPosition.altitude) * .pi / 180.0
+        
+        // Use sine function to convert altitude to visual height (more accurate than linear)
+        // This accounts for the fact that altitude changes are more dramatic near horizon
+        let normalizedHeight = sin(currentAltitudeRadians) / sin(maxAltitudeRadians)
+        
+        // Scale the height to available visual space
+        let availableHeight = height * (yBaseFactor - 0.1) // Leave 10% margin at top
+        let y = height * yBaseFactor - availableHeight * CGFloat(normalizedHeight)
+        
+        return CGPoint(x: x, y: max(height * 0.1, y)) // Ensure sun doesn't go above 10% from top
+    }
+    
+    /// Generates the accurate sun path curve for the entire day
+    /// - Parameters:
+    ///   - date: Date for which to calculate the path
+    ///   - latitude: Observer's latitude
+    ///   - longitude: Observer's longitude  
+    ///   - timezoneIdentifier: Timezone identifier
+    ///   - sunrise: Sunrise time
+    ///   - sunset: Sunset time
+    ///   - solarNoon: Solar noon time
+    ///   - rect: Visualization rect
+    ///   - xInsetFactor: Horizontal inset factor
+    ///   - yBaseFactor: Vertical baseline factor
+    ///   - pointCount: Number of points to calculate for smooth curve
+    /// - Returns: Array of CGPoints representing the accurate sun path
+    public static func generateAccurateSunPath(
+        date: Date,
+        latitude: CLLocationDegrees,
+        longitude: CLLocationDegrees,
+        timezoneIdentifier: String,
+        sunrise: Date,
+        sunset: Date,
+        solarNoon: Date,
+        in rect: CGRect,
+        xInsetFactor: CGFloat = 0.1,
+        yBaseFactor: CGFloat = 0.85,
+        pointCount: Int = 50
+    ) -> [CGPoint] {
+        var pathPoints: [CGPoint] = []
+        let totalDaylightSeconds = sunset.timeIntervalSince(sunrise)
+        
+        guard totalDaylightSeconds > 0 else { return pathPoints }
+        
+        // Calculate points along the sun's path throughout the day
+        for i in 0...pointCount {
+            let progress = Double(i) / Double(pointCount)
+            let timeOffset = totalDaylightSeconds * progress
+            let calculationTime = sunrise.addingTimeInterval(timeOffset)
+            
+            if let pathData = calculateSolarPathData(
+                date: calculationTime,
+                latitude: latitude,
+                longitude: longitude,
+                timezoneIdentifier: timezoneIdentifier,
+                sunrise: sunrise,
+                sunset: sunset,
+                solarNoon: solarNoon
+            ) {
+                let point = calculateAccurateSunPosition(
+                    solarPathData: pathData,
+                    in: rect,
+                    xInsetFactor: xInsetFactor,
+                    yBaseFactor: yBaseFactor
+                )
+                pathPoints.append(point)
+            }
+        }
+        
+        return pathPoints
+    }
+
     /// Calculates the sun's altitude and azimuth for a given date, time, and location.
     /// - Parameters:
     ///   - date: The specific `Date` for which to calculate the sun's position.

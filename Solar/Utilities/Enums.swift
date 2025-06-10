@@ -15,11 +15,22 @@ enum SkyCondition {
     case sunset
 }
 
-enum DataLoadingState {
+enum DataLoadingState: Equatable {
     case idle
     case loading
     case success
     case error(message: String)
+
+    static func == (lhs: DataLoadingState, rhs: DataLoadingState) -> Bool {
+        switch (lhs, rhs) {
+        case (.idle, .idle), (.loading, .loading), (.success, .success):
+            return true
+        case (.error(let lhsMessage), .error(let rhsMessage)):
+            return lhsMessage == rhsMessage
+        default:
+            return false
+        }
+    }
 }
 
 enum UserDefaultsKeys {
@@ -27,6 +38,7 @@ enum UserDefaultsKeys {
     static let lastSelectedCityLatitude = "lastSelectedCityLatitude"
     static let lastSelectedCityLongitude = "lastSelectedCityLongitude"
     static let lastSelectedCityTimezoneId = "lastSelectedCityTimezoneId"
+    static let useCurrentLocation = "useCurrentLocation" // Add this new key
 }
 
 enum DataSectionType: String, CaseIterable, Codable, Identifiable {
@@ -34,7 +46,7 @@ enum DataSectionType: String, CaseIterable, Codable, Identifiable {
     case hourlyUVChart = "Hourly UV Forecast"
     case airQuality = "Air Quality"
     case solarCountdown = "Solar Timings"
-    case goldenHour = "Golden Hour" 
+    case goldenHour = "Golden Hour"
 
     var id: String { self.rawValue }
     
