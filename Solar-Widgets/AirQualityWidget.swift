@@ -176,6 +176,8 @@ struct AirQualityWidgetEntryView: View {
             AirQualitySmallView(entry: entry)
         case .systemMedium:
             AirQualityMediumView(entry: entry)
+        case .systemLarge:
+            AirQualityLargeView(entry: entry)
         default:
             AirQualityMediumView(entry: entry)
         }
@@ -221,6 +223,7 @@ struct AirQualitySmallView: View {
                     .lineLimit(1)
         }
         .padding(12)
+        .fontDesign(.rounded)
     }
     
     private func aqiGradientColors() -> [Color] {
@@ -260,6 +263,8 @@ struct AirQualityMediumView: View {
                             .font(.caption)
                             .fontWeight(.medium)
                             .foregroundColor(.white.opacity(0.9))
+                            .lineLimit(1)
+                            .fixedSize(horizontal: true, vertical: false)
                     }
                     
                     if let aqi = entry.aqi {
@@ -311,14 +316,15 @@ struct AirQualityMediumView: View {
                         
                         Text(entry.recommendation)
                             .font(.caption)
-                            .fontWeight(.medium)
                             .foregroundColor(.white)
                             .multilineTextAlignment(.trailing)
-                            .lineLimit(2)
+                            .lineLimit(1)
+                            .fixedSize(horizontal: true, vertical: false)
                     }
                 }
         }
         .padding(16)
+        .fontDesign(.rounded)
     }
     
     private func aqiGradientColors() -> [Color] {
@@ -488,6 +494,7 @@ struct AirQualityLargeView: View {
                 }
         }
         .padding(20)
+        .fontDesign(.rounded)
     }
     
     private func aqiGradientColors() -> [Color] {

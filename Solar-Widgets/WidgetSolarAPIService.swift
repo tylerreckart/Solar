@@ -239,7 +239,7 @@ extension WidgetAirQualityResponse {
     var healthRecommendation: String {
         guard let aqi = current.usAqi else { return "Data unavailable" }
         if aqi <= 50 { return "Great for outdoor activities" }
-        if aqi <= 100 { return "Moderate - limit prolonged outdoor exertion" }
+        if aqi <= 100 { return "Limit outdoor activities" }
         if aqi <= 150 { return "Unhealthy for sensitive groups" }
         if aqi <= 200 { return "Avoid outdoor activities" }
         if aqi <= 300 { return "Stay indoors" }

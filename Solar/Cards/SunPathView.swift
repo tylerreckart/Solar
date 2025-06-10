@@ -38,8 +38,8 @@ struct SunPathView: View {
     let skyCondition: SkyCondition
     let useAccurateCalculations: Bool = false
 
-    private let pathXInsetFactor: CGFloat = 0.1
-    private let pathYBaseFactor: CGFloat = 0.8
+    private let pathXInsetFactor: CGFloat = 1
+    private let pathYBaseFactor: CGFloat = 1
 
 
     private var gradientColors: [Color] {
@@ -76,10 +76,12 @@ struct SunPathView: View {
                 SunPathShape(
                     xInsetFactor: pathXInsetFactor,
                     yBaseFactor: pathYBaseFactor,
-                    peakHeightFactor: 0.3
+                    peakHeightFactor: 0.5
                 )
                 .stroke(style: StrokeStyle(lineWidth: 2, lineCap: .round))
                 .foregroundColor(.white.opacity(0.8))
+                .padding(.bottom, 125)
+                .padding(.horizontal, 50)
             }
             
             GeometryReader { geometry in
@@ -101,6 +103,8 @@ struct SunPathView: View {
                     .shadow(color: .yellow.opacity(0.5), radius: 12, x: 0, y: 3)
                     .position(sunPosition)
             }
+            .padding(.bottom, 125)
+            .padding(.horizontal, 50)
         }
         .frame(height: 250)
     }

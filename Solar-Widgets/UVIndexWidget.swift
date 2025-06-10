@@ -251,6 +251,7 @@ struct UVIndexSmallView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(12)
+        .fontDesign(.rounded)
     }
     
     private func uvGradientColors() -> [Color] {
@@ -329,32 +330,32 @@ struct UVIndexMediumView: View {
                             Text("Peak at \(peakTime.timeString())")
                                 .font(.caption2)
                                 .foregroundColor(.white.opacity(0.8))
+                                .lineLimit(1)
+                                .fixedSize(horizontal: true, vertical: false)
                         }
                     }
                     
                     Spacer()
                     
-                    // Hourly forecast mini chart
-                    UVHourlyMiniChart(data: Array(entry.hourlyForecast.prefix(6)))
-                }
-                
-                // Protection advice
-                HStack {
-                    Image(systemName: protectionIcon())
-                        .font(.system(size: 12, weight: .medium))
-                        .symbolRenderingMode(.hierarchical)
-                        .foregroundColor(.white)
-                    
-                    Text(entry.protectionAdvice)
-                        .font(.caption)
-                        .fontWeight(.medium)
-                        .foregroundColor(.white)
-                        .lineLimit(1)
-                    
-                    Spacer()
+                    // Protection advice
+                    VStack(alignment: .trailing) {
+                        Spacer()
+                        
+                        Image(systemName: protectionIcon())
+                            .font(.system(size: 14, weight: .medium))
+                            .symbolRenderingMode(.hierarchical)
+                            .foregroundColor(.white)
+                        
+                        Text(entry.protectionAdvice)
+                            .font(.caption)
+                            .foregroundColor(.white)
+                            .lineLimit(1)
+                            .fixedSize(horizontal: true, vertical: false)
+                    }
                 }
         }
         .padding(16)
+        .fontDesign(.rounded)
     }
     
     private func uvGradientColors() -> [Color] {
@@ -363,7 +364,7 @@ struct UVIndexMediumView: View {
         if uv <= 2 {
             return [.green, .mint]
         } else if uv <= 5 {
-            return [.yellow, .orange.opacity(0.7)]
+            return [.yellow, .orange.opacity(0.9)]
         } else if uv <= 7 {
             return [.orange, .red.opacity(0.7)]
         } else if uv <= 10 {
@@ -396,29 +397,6 @@ struct UVIndexMediumView: View {
             return "shield.fill"
         } else {
             return "exclamationmark.shield.fill"
-        }
-    }
-    
-    struct UVHourlyMiniChart: View {
-        let data: [WidgetHourlyUV]
-        
-        var body: some View {
-            HStack(spacing: 2) {
-                ForEach(data) { uvData in
-                    VStack(spacing: 2) {
-                        // UV bar
-                        RoundedRectangle(cornerRadius: 1)
-                            .fill(Color.uvColor(for: uvData.uvCategory))
-                            .frame(width: 8, height: max(4, CGFloat(uvData.uvIndex) * 3))
-                        
-                        // Time label
-                        Text(uvData.time.timeString())
-                            .font(.system(size: 6))
-                            .foregroundColor(.white.opacity(0.7))
-                            .rotationEffect(.degrees(-45))
-                    }
-                }
-            }
         }
     }
 }
