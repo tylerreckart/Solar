@@ -95,16 +95,6 @@
 			path = Solar;
 			sourceTree = "<group>";
 		};
-		DBC51BD02DD389C1000ACFA4 /* SolarTests */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = SolarTests;
-			sourceTree = "<group>";
-		};
-		DBC51BDA2DD389C1000ACFA4 /* SolarUITests */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = SolarUITests;
-			sourceTree = "<group>";
-		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -156,8 +146,6 @@
 			children = (
 				DBBC5D4E2DF896B600B16852 /* Solar-WidgetsExtension.entitlements */,
 				DBC51BBD2DD389BF000ACFA4 /* Solar */,
-				DBC51BD02DD389C1000ACFA4 /* SolarTests */,
-				DBC51BDA2DD389C1000ACFA4 /* SolarUITests */,
 				DB21D7612DF84BD000B5AA28 /* Solar-Widgets */,
 				DB5B516C2DF496D0009CAE87 /* Frameworks */,
 				DBC51BBC2DD389BF000ACFA4 /* Products */,
@@ -238,9 +226,6 @@
 			dependencies = (
 				DBC51BCF2DD389C1000ACFA4 /* PBXTargetDependency */,
 			);
-			fileSystemSynchronizedGroups = (
-				DBC51BD02DD389C1000ACFA4 /* SolarTests */,
-			);
 			name = SolarTests;
 			packageProductDependencies = (
 			);
@@ -260,9 +245,6 @@
 			);
 			dependencies = (
 				DBC51BD92DD389C1000ACFA4 /* PBXTargetDependency */,
-			);
-			fileSystemSynchronizedGroups = (
-				DBC51BDA2DD389C1000ACFA4 /* SolarUITests */,
 			);
 			name = SolarUITests;
 			packageProductDependencies = (
@@ -593,7 +575,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = Solar/Solar.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 7;
+				CURRENT_PROJECT_VERSION = 8;
 				DEVELOPMENT_TEAM = 78FCYG6ZD9;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -611,7 +593,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.2;
+				MARKETING_VERSION = 1.2.1;
 				PRODUCT_BUNDLE_IDENTIFIER = "Haptic-Software-LLC.Solar";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -629,7 +611,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = Solar/Solar.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 7;
+				CURRENT_PROJECT_VERSION = 8;
 				DEVELOPMENT_TEAM = 78FCYG6ZD9;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -647,7 +629,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.2;
+				MARKETING_VERSION = 1.2.1;
 				PRODUCT_BUNDLE_IDENTIFIER = "Haptic-Software-LLC.Solar";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";

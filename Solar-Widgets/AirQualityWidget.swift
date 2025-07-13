@@ -220,7 +220,6 @@ struct AirQualitySmallView: View {
                 Text(entry.location)
                     .font(.caption2)
                     .foregroundColor(.white.opacity(0.8))
-                    .lineLimit(1)
         }
         .padding(12)
         .fontDesign(.rounded)
@@ -263,7 +262,6 @@ struct AirQualityMediumView: View {
                             .font(.caption)
                             .fontWeight(.medium)
                             .foregroundColor(.white.opacity(0.9))
-                            .lineLimit(1)
                             .fixedSize(horizontal: true, vertical: false)
                     }
                     
@@ -285,7 +283,6 @@ struct AirQualityMediumView: View {
                     Text(entry.location)
                         .font(.caption2)
                         .foregroundColor(.white.opacity(0.8))
-                        .lineLimit(1)
                 }
                 
                 Spacer()
@@ -318,7 +315,6 @@ struct AirQualityMediumView: View {
                             .font(.caption)
                             .foregroundColor(.white)
                             .multilineTextAlignment(.trailing)
-                            .lineLimit(1)
                             .fixedSize(horizontal: true, vertical: false)
                     }
                 }
@@ -484,7 +480,6 @@ struct AirQualityLargeView: View {
                                 .font(.caption)
                                 .fontWeight(.medium)
                                 .foregroundColor(.yellow)
-                                .lineLimit(1)
                         }
                         .padding(.horizontal, 12)
                         .padding(.vertical, 6)

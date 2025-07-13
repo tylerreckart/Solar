@@ -246,7 +246,6 @@ struct UVIndexSmallView: View {
                 Text(entry.location)
                     .font(.caption2)
                     .foregroundColor(.white.opacity(0.8))
-                    .lineLimit(1)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -310,7 +309,6 @@ struct UVIndexMediumView: View {
                     Text(entry.location)
                         .font(.caption2)
                         .foregroundColor(.white.opacity(0.8))
-                        .lineLimit(1)
                 }
                 
                 // Main UV display and chart
@@ -330,8 +328,6 @@ struct UVIndexMediumView: View {
                             Text("Peak at \(peakTime.timeString())")
                                 .font(.caption2)
                                 .foregroundColor(.white.opacity(0.8))
-                                .lineLimit(1)
-                                .fixedSize(horizontal: true, vertical: false)
                         }
                     }
                     
@@ -349,8 +345,7 @@ struct UVIndexMediumView: View {
                         Text(entry.protectionAdvice)
                             .font(.caption)
                             .foregroundColor(.white)
-                            .lineLimit(1)
-                            .fixedSize(horizontal: true, vertical: false)
+                            .multilineTextAlignment(.trailing)
                     }
                 }
         }

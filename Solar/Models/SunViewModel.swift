@@ -1,5 +1,3 @@
-// Solar/Models/SunViewModel.swift
-
 import Foundation
 import Combine
 import CoreLocation
