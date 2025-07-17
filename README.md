@@ -21,7 +21,7 @@ An iOS app for tracking solar data, UV index, and air quality with interactive w
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/username/solar.git
+git clone https://github.com/tylerreckart/solar.git
 cd solar
 ```
 
